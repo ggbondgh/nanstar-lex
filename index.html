@@ -25,42 +25,8 @@
           <button class="nav-item" data-view="import" type="button">导入</button>
           <button class="nav-item" data-view="library" type="button">列表</button>
           <button class="nav-item" data-view="stats" type="button">统计</button>
+          <button class="nav-item" data-view="settings" type="button">设置</button>
         </nav>
-
-        <div class="sidebar-footer">
-          <section class="sync-panel" data-sync-state="idle" aria-label="同步设置">
-            <div class="sync-header">
-              <strong>同步</strong>
-              <span id="syncStatus" data-state="idle" aria-live="polite">未配置</span>
-            </div>
-            <label>
-              Project URL
-              <input id="syncUrlInput" type="url" placeholder="https://xxx.supabase.co" autocomplete="off" />
-            </label>
-            <label>
-              anon public key
-              <input id="syncAnonKeyInput" type="password" placeholder="只填 anon key" autocomplete="off" />
-            </label>
-            <label>
-              邮箱
-              <input id="syncEmailInput" type="email" placeholder="you@example.com" autocomplete="email" />
-            </label>
-            <label>
-              密码
-              <input id="syncPasswordInput" type="password" placeholder="至少 6 位" autocomplete="current-password" />
-            </label>
-            <div class="sync-actions">
-              <button class="ghost-button" id="saveSyncConfigButton" type="button">保存配置</button>
-              <button class="ghost-button" id="syncSignUpButton" type="button">注册</button>
-              <button class="ghost-button" id="syncSignInButton" type="button">登录</button>
-              <button class="secondary-button" id="syncNowButton" type="button" disabled>立即同步</button>
-              <button class="text-button" id="syncSignOutButton" type="button" disabled>退出</button>
-            </div>
-          </section>
-          <button class="ghost-button block-button" id="exportDataButton" type="button">导出备份</button>
-          <label class="ghost-button block-button file-button" for="restoreFile">导入备份</label>
-          <input id="restoreFile" type="file" accept="application/json" hidden />
-        </div>
       </aside>
 
       <main class="main">
@@ -130,6 +96,7 @@
                 </div>
 
                 <div id="wordInputMode">
+                  <div class="word-builder hidden" id="wordBuilder"></div>
                   <input
                     id="wordAnswerInput"
                     class="answer-input"
@@ -145,6 +112,7 @@
                     <button class="secondary-button" id="wordShowAnswerButton" type="button">显示答案</button>
                     <button class="ghost-button" id="wordNextButton" type="button">下一个</button>
                   </div>
+                  <p class="keyboard-note">Enter 提交，Ctrl+; 显示/隐藏答案，Ctrl+. 下一个，短语可用 Space 跳词</p>
                 </div>
 
                 <div id="wordReviewMode" class="hidden">
@@ -185,7 +153,7 @@
                 </div>
                 <div class="trainer-footer centered">
                   <button class="danger-ghost-button" id="sentencePauseButton" type="button">暂停练习</button>
-                  <span class="keyboard-note">Space 下个词，方向键切词，Enter 提交</span>
+                  <span class="keyboard-note">Enter 提交，Ctrl+; 提示/隐藏，Ctrl+. 下一个，Space 下个词，方向键切词</span>
                 </div>
               </article>
             </section>
@@ -365,6 +333,84 @@
             </div>
             <div class="bar-chart" id="weekChart"></div>
           </section>
+        </section>
+
+        <section class="view" id="settingsView" aria-labelledby="settingsTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Settings</p>
+              <h2 id="settingsTitle">设置</h2>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <section class="tool-panel sync-panel settings-panel" data-sync-state="idle" aria-label="同步设置">
+              <div class="sync-header">
+                <div>
+                  <h3>同步</h3>
+                  <p class="panel-note">电脑和手机共用同一个 Supabase 账号。</p>
+                </div>
+                <span id="syncStatus" data-state="idle" aria-live="polite">未配置</span>
+              </div>
+              <div class="settings-form">
+                <label>
+                  Project URL
+                  <input id="syncUrlInput" type="url" placeholder="https://xxx.supabase.co" autocomplete="off" />
+                </label>
+                <label>
+                  anon public key
+                  <input id="syncAnonKeyInput" type="password" placeholder="只填 anon key" autocomplete="off" />
+                </label>
+                <label>
+                  邮箱
+                  <input id="syncEmailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+                </label>
+                <label>
+                  密码
+                  <input id="syncPasswordInput" type="password" placeholder="至少 6 位" autocomplete="current-password" />
+                </label>
+              </div>
+              <div class="sync-actions">
+                <button class="ghost-button" id="saveSyncConfigButton" type="button">保存配置</button>
+                <button class="ghost-button" id="syncSignUpButton" type="button">注册</button>
+                <button class="ghost-button" id="syncSignInButton" type="button">登录</button>
+                <button class="secondary-button" id="syncNowButton" type="button" disabled>立即同步</button>
+                <button class="text-button" id="syncSignOutButton" type="button" disabled>退出</button>
+              </div>
+            </section>
+
+            <section class="tool-panel settings-panel">
+              <h3>数据</h3>
+              <p class="panel-note">本地备份用于兜底保存，也方便以后迁移。</p>
+              <div class="settings-actions">
+                <button class="ghost-button" id="exportDataButton" type="button">导出备份</button>
+                <label class="ghost-button file-button" for="restoreFile">导入备份</label>
+                <input id="restoreFile" type="file" accept="application/json" hidden />
+              </div>
+            </section>
+
+            <section class="tool-panel settings-panel">
+              <h3>快捷键</h3>
+              <dl class="shortcut-list">
+                <div>
+                  <dt>提交</dt>
+                  <dd>Enter</dd>
+                </div>
+                <div>
+                  <dt>显示/隐藏答案或提示</dt>
+                  <dd>Ctrl+;</dd>
+                </div>
+                <div>
+                  <dt>下一个</dt>
+                  <dd>Ctrl+.</dd>
+                </div>
+                <div>
+                  <dt>切换词位</dt>
+                  <dd>Space / ← / →</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
         </section>
       </main>
     </div>

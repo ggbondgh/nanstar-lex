@@ -74,6 +74,7 @@ const els = {
   wordPrompt: $("#wordPrompt"),
   wordInputMode: $("#wordInputMode"),
   wordReviewMode: $("#wordReviewMode"),
+  wordBuilder: $("#wordBuilder"),
   wordAnswerInput: $("#wordAnswerInput"),
   wordAnswerReveal: $("#wordAnswerReveal"),
   wordFeedback: $("#wordFeedback"),
@@ -185,6 +186,9 @@ function bindEvents() {
       submitWordAnswer();
     }
   });
+  els.wordBuilder.addEventListener("keydown", handleWordBuilderKeydown);
+  els.wordBuilder.addEventListener("input", handleWordBuilderInput);
+  document.addEventListener("keydown", handleGlobalShortcuts);
   els.wordSubmitButton.addEventListener("click", submitWordAnswer);
   els.wordShowAnswerButton.addEventListener("click", toggleWordAnswer);
   els.wordNextButton.addEventListener("click", nextWordCard);
@@ -754,16 +758,58 @@ function renderWordTrainer(item) {
   els.wordSwitchModeButton.textContent = inputMode ? "切到英文自评" : "切到中文填英文";
 
   if (inputMode) {
-    setTimeout(() => els.wordAnswerInput.focus(), 30);
+    renderWordBuilder(item.english);
   }
+}
+
+function renderWordBuilder(answer) {
+  const tokens = tokenizeAnswerWords(answer);
+  const useBuilder = tokens.length > 1;
+  els.wordBuilder.classList.toggle("hidden", !useBuilder);
+  els.wordAnswerInput.classList.toggle("hidden", useBuilder);
+  els.wordBuilder.textContent = "";
+
+  if (!useBuilder) {
+    setTimeout(() => els.wordAnswerInput.focus(), 30);
+    return;
+  }
+
+  tokens.forEach((token, index) => {
+    const wrapper = document.createElement("label");
+    wrapper.className = "word-token";
+    wrapper.setAttribute("aria-label", `第 ${index + 1} 个单词`);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.dataset.answer = token;
+    input.dataset.index = String(index);
+    input.style.setProperty("--token-width", `${Math.max(5, Math.min(18, token.length + 2))}ch`);
+    wrapper.append(input);
+    els.wordBuilder.append(wrapper);
+  });
+
+  const firstInput = wordInputs()[0];
+  if (firstInput) setTimeout(() => firstInput.focus(), 30);
+}
+
+function tokenizeAnswerWords(answer) {
+  return Array.from(answer.matchAll(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu), (match) => match[0]);
+}
+
+function wordInputs() {
+  return Array.from(els.wordBuilder.querySelectorAll("input"));
 }
 
 function submitWordAnswer() {
   const item = getCurrentPracticeItem();
   if (!item) return;
 
-  const answer = els.wordAnswerInput.value;
-  const correct = normalizeAnswer(answer) === normalizeAnswer(item.english);
+  const splitInputs = wordInputs();
+  const correct = splitInputs.length
+    ? evaluateWordBuilder(splitInputs)
+    : normalizeAnswer(els.wordAnswerInput.value) === normalizeAnswer(item.english);
 
   if (correct) {
     setFeedback(els.wordFeedback, randomMessage("correct"), "success");
@@ -776,9 +822,59 @@ function submitWordAnswer() {
   }
 
   setFeedback(els.wordFeedback, randomMessage("wrong"), "error");
+  if (splitInputs.length) {
+    const firstWrong = splitInputs.find((input) => input.classList.contains("error"));
+    focusTokenInput(firstWrong || splitInputs[0]);
+  }
   recordItemResult(item, "wrong");
   saveState();
   renderAll();
+}
+
+function evaluateWordBuilder(inputs) {
+  let allCorrect = true;
+
+  inputs.forEach((input) => {
+    const correct = normalizeAnswer(input.value) === normalizeAnswer(input.dataset.answer || "");
+    input.classList.toggle("has-value", input.value.trim().length > 0);
+    input.classList.toggle("correct", correct);
+    input.classList.toggle("error", !correct);
+    if (!correct) allCorrect = false;
+  });
+
+  return allCorrect;
+}
+
+function handleWordBuilderKeydown(event) {
+  if (!(event.target instanceof HTMLInputElement)) return;
+  const inputs = wordInputs();
+  const index = inputs.indexOf(event.target);
+
+  if (event.key === " " || event.key === "ArrowRight") {
+    event.preventDefault();
+    focusTokenInput(inputs[index + 1] || inputs[index]);
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    focusTokenInput(inputs[index - 1] || inputs[index]);
+  }
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    submitWordAnswer();
+  }
+
+  if (event.key === "Backspace" && event.target.value === "" && index > 0) {
+    focusTokenInput(inputs[index - 1]);
+  }
+}
+
+function handleWordBuilderInput(event) {
+  if (!(event.target instanceof HTMLInputElement)) return;
+  event.target.classList.toggle("has-value", event.target.value.trim().length > 0);
+  event.target.classList.remove("correct", "error");
+  setFeedback(els.wordFeedback, "");
 }
 
 function toggleWordAnswer() {
@@ -967,9 +1063,38 @@ function sentenceInputs() {
 }
 
 function focusSentenceInput(input) {
+  focusTokenInput(input);
+}
+
+function focusTokenInput(input) {
   if (!input) return;
   input.focus();
   input.select();
+}
+
+function handleGlobalShortcuts(event) {
+  if (!event.ctrlKey || event.altKey || event.metaKey) return;
+  const view = getActiveView();
+  if (view !== "practice") return;
+
+  if (event.key === ";" || event.code === "Semicolon") {
+    event.preventDefault();
+    const type = els.practiceType.value;
+    if (type === "sentence") toggleSentenceHint();
+    else if (wordTrainingMode === "input") toggleWordAnswer();
+    else toggleWordReviewAnswer();
+  }
+
+  if (event.key === "." || event.code === "Period") {
+    event.preventDefault();
+    const type = els.practiceType.value;
+    if (type === "sentence") nextSentenceCard();
+    else nextWordCard();
+  }
+}
+
+function getActiveView() {
+  return els.navItems.find((button) => button.classList.contains("active"))?.dataset.view || "practice";
 }
 
 function submitSentenceAnswer() {
