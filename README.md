@@ -1,6 +1,8 @@
-# Super English
+# NanStar Lex
 
-个人英语训练网页应用，包含单词/短语练习、句子练习、导入、文件夹、标签、收藏、统计和 Supabase 同步。
+南星词轨，个人英语词句训练网页应用。属于 `南星 Nathan` 个人品牌体系，由 `ZN Cosmos` 出品。
+
+当前能力包含单词/短语练习、句子练习、导入、文件夹、标签、收藏、统计和 Supabase 同步。
 
 ## 本地运行
 
@@ -46,12 +48,12 @@ supabase-schema.sql
 
 推荐流程：
 
-1. 在 GitHub 创建一个空仓库，例如 `super-english`。
+1. 在 GitHub 创建一个空仓库，推荐命名为 `nanstar-lex`。
 2. 不要勾选初始化 README、`.gitignore` 或 license，因为本地项目已经包含这些文件。
 3. 把 GitHub 给出的仓库地址发给 Codex，例如：
 
 ```text
-https://github.com/你的用户名/super-english.git
+https://github.com/你的用户名/nanstar-lex.git
 ```
 
 4. 本地推送到 GitHub 后，进入 Cloudflare Pages 创建项目。

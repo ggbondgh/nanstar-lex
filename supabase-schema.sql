@@ -1,4 +1,4 @@
--- Super English sync schema
+-- NanStar Lex sync schema
 -- Run this in Supabase SQL Editor.
 
 create table if not exists public.se_folders (

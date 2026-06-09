@@ -1,9 +1,9 @@
 {
-  "name": "Super English",
-  "short_name": "Super English",
-  "description": "本地英语词句训练应用",
+  "name": "NanStar Lex",
+  "short_name": "NanStar Lex",
+  "description": "南星词轨，个人英语词句训练应用",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f4f7f8",
-  "theme_color": "#15615b"
+  "background_color": "#f6f3ee",
+  "theme_color": "#0b0714"
 }

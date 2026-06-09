@@ -1,4 +1,4 @@
-const CACHE_NAME = "super-english-v7";
+const CACHE_NAME = "nanstar-lex-v1";
 const ASSETS = [
   "./",
   "./index.html",

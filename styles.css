@@ -1,25 +1,32 @@
 :root {
   color-scheme: light;
-  --bg: #f4f7f8;
-  --panel: #ffffff;
-  --panel-alt: #eef4f3;
-  --text: #182126;
-  --muted: #66757f;
-  --border: #d8e2e5;
-  --primary: #15615b;
-  --primary-soft: #d9efec;
-  --accent: #d46d13;
-  --typing: #c93df0;
-  --typing-soft: #f8e8ff;
-  --ink-soft: #7a7f86;
+  --space: #0b0714;
+  --space-2: #16051c;
+  --nebula-cyan: #22d3c5;
+  --nebula-violet: #7c3aed;
+  --star-gold: #f59e0b;
+  --stardust: #f7f3ea;
+  --silver: #b8c4cc;
+  --bg: #f6f3ee;
+  --panel: #fffdf8;
+  --panel-alt: #f0ebe3;
+  --text: #17131f;
+  --muted: #6e6876;
+  --border: #ded6cc;
+  --primary: #0f766e;
+  --primary-soft: #dcf7f3;
+  --accent: var(--star-gold);
+  --typing: var(--nebula-violet);
+  --typing-soft: #eee7ff;
+  --ink-soft: #78717f;
   --danger: #b54747;
   --danger-soft: #fbe6e6;
-  --favorite: #ba8b09;
+  --favorite: #b7791f;
   --correct: #176c3f;
   --correct-soft: #e2f6ea;
   --error: #c43c3c;
   --error-soft: #fde7e7;
-  --shadow: 0 14px 36px rgba(14, 34, 38, 0.08);
+  --shadow: 0 14px 36px rgba(20, 7, 31, 0.1);
   font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
 }
 
@@ -76,8 +83,8 @@ button {
   flex-direction: column;
   gap: 24px;
   padding: 28px 20px;
-  background: #102b2c;
-  color: #edf5f3;
+  background: linear-gradient(180deg, var(--space) 0%, var(--space-2) 58%, #062d32 100%);
+  color: var(--stardust);
 }
 
 .brand {
@@ -93,8 +100,11 @@ button {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, var(--nebula-violet) 0%, #2932a9 42%, var(--nebula-cyan) 100%);
+  color: #fff;
   font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.28);
 }
 
 .brand h1,
@@ -107,7 +117,7 @@ button {
 }
 
 .brand p {
-  color: rgba(237, 245, 243, 0.72);
+  color: rgba(247, 243, 234, 0.72);
   font-size: 0.92rem;
 }
 
@@ -127,7 +137,7 @@ button {
 
 .nav-item.active,
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(34, 211, 197, 0.12);
 }
 
 .sidebar-footer {
@@ -340,7 +350,7 @@ button {
 
 .practice-mode-card.active {
   border-color: var(--primary);
-  background: linear-gradient(180deg, #ffffff 0%, #edf8f6 100%);
+  background: linear-gradient(180deg, #fffdf8 0%, #e9fbf8 100%);
 }
 
 .practice-toolbar {
@@ -382,7 +392,7 @@ button {
   display: grid;
   place-items: center;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(250, 253, 253, 0.98) 100%),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96) 0%, rgba(247, 243, 234, 0.98) 100%),
     var(--panel);
 }
 
@@ -711,8 +721,9 @@ textarea {
 }
 
 .primary-button {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #1466a8 100%);
   color: #fff;
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.18);
 }
 
 .secondary-button {
@@ -813,7 +824,7 @@ button:disabled {
 
 .library-item.selected {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(21, 97, 91, 0.14);
+  box-shadow: 0 0 0 2px rgba(34, 211, 197, 0.16);
 }
 
 .library-item-main {
@@ -914,7 +925,7 @@ button:disabled {
   width: 100%;
   min-height: 6px;
   border-radius: 6px 6px 0 0;
-  background: linear-gradient(180deg, #2aa48b 0%, #15615b 100%);
+  background: linear-gradient(180deg, var(--nebula-cyan) 0%, var(--nebula-violet) 100%);
 }
 
 .bar-label,
@@ -930,8 +941,8 @@ button:disabled {
   max-width: 320px;
   padding: 12px 16px;
   border-radius: 8px;
-  background: #16282a;
-  color: #fff;
+  background: var(--space-2);
+  color: var(--stardust);
   opacity: 0;
   pointer-events: none;
   transform: translateY(12px);

@@ -1433,7 +1433,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `super-english-backup-${todayKey()}.json`;
+  link.download = `nanstar-lex-backup-${todayKey()}.json`;
   document.body.append(link);
   link.click();
   link.remove();

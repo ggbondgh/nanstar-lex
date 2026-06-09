@@ -16,3 +16,4 @@ build/
 
 # User-created local backups
 super-english-backup-*.json
+nanstar-lex-backup-*.json
