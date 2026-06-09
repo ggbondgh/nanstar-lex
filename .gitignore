@@ -1,0 +1,18 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local environment and logs
+.env
+.env.*
+*.log
+
+# Optional local dependencies/build output
+node_modules/
+dist/
+build/
+
+# User-created local backups
+super-english-backup-*.json

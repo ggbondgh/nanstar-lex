@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#15615b" />
+    <title>Super English</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">SE</span>
+          <div>
+            <h1>Super English</h1>
+            <p>本地英语训练库</p>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="主导航">
+          <button class="nav-item active" data-view="practice" type="button">练习</button>
+          <button class="nav-item" data-view="import" type="button">导入</button>
+          <button class="nav-item" data-view="library" type="button">列表</button>
+          <button class="nav-item" data-view="stats" type="button">统计</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <section class="sync-panel" data-sync-state="idle" aria-label="同步设置">
+            <div class="sync-header">
+              <strong>同步</strong>
+              <span id="syncStatus" data-state="idle" aria-live="polite">未配置</span>
+            </div>
+            <label>
+              Project URL
+              <input id="syncUrlInput" type="url" placeholder="https://xxx.supabase.co" autocomplete="off" />
+            </label>
+            <label>
+              anon public key
+              <input id="syncAnonKeyInput" type="password" placeholder="只填 anon key" autocomplete="off" />
+            </label>
+            <label>
+              邮箱
+              <input id="syncEmailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+            </label>
+            <label>
+              密码
+              <input id="syncPasswordInput" type="password" placeholder="至少 6 位" autocomplete="current-password" />
+            </label>
+            <div class="sync-actions">
+              <button class="ghost-button" id="saveSyncConfigButton" type="button">保存配置</button>
+              <button class="ghost-button" id="syncSignUpButton" type="button">注册</button>
+              <button class="ghost-button" id="syncSignInButton" type="button">登录</button>
+              <button class="secondary-button" id="syncNowButton" type="button" disabled>立即同步</button>
+              <button class="text-button" id="syncSignOutButton" type="button" disabled>退出</button>
+            </div>
+          </section>
+          <button class="ghost-button block-button" id="exportDataButton" type="button">导出备份</button>
+          <label class="ghost-button block-button file-button" for="restoreFile">导入备份</label>
+          <input id="restoreFile" type="file" accept="application/json" hidden />
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">今日累计</p>
+            <strong id="todayPracticeCount">0 次练习</strong>
+          </div>
+          <div class="topbar-actions">
+            <button class="secondary-button" id="quickImportButton" type="button">快速导入</button>
+            <button class="primary-button" id="quickPracticeButton" type="button">回到练习</button>
+          </div>
+        </header>
+
+        <section class="view active" id="practiceView" aria-labelledby="practiceTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Practice</p>
+              <h2 id="practiceTitle">练习</h2>
+            </div>
+          </div>
+
+          <div class="practice-mode-switch" id="practiceTypeButtons">
+            <button class="practice-mode-card active" data-practice-target="word" type="button">
+              <strong>单词 / 短语</strong>
+              <span>中文提示，输入英文；也可切到英文自评模式。</span>
+            </button>
+            <button class="practice-mode-card" data-practice-target="sentence" type="button">
+              <strong>句子</strong>
+              <span>按词填空，Space 跳词，左右方向键切换词位。</span>
+            </button>
+          </div>
+
+          <select id="practiceType" class="sr-only" aria-hidden="true">
+            <option value="word" selected>单词 / 短语</option>
+            <option value="sentence">句子</option>
+          </select>
+
+          <div class="practice-toolbar">
+            <label>
+              范围
+              <select id="practiceFolder"></select>
+            </label>
+            <label class="switch">
+              <input id="practiceFavoritesOnly" type="checkbox" />
+              <span>只练收藏</span>
+            </label>
+          </div>
+
+          <div class="practice-layout">
+            <section class="practice-panel">
+              <div class="empty-state" id="practiceEmpty">
+                <h3>还没有可练习内容</h3>
+                <p>先导入词/短语或句子，或者检查当前范围里是否都已暂停练习。</p>
+                <button class="primary-button" data-view-jump="import" type="button">去导入</button>
+              </div>
+
+              <article class="trainer-card hidden" id="wordTrainer">
+                <div class="card-meta">
+                  <span id="wordFolderLabel"></span>
+                  <button class="icon-text-button" id="wordFavoriteButton" type="button">收藏</button>
+                </div>
+
+                <div class="prompt-block">
+                  <p class="prompt-label" id="wordPromptLabel">中文</p>
+                  <h3 class="word-prompt" id="wordPrompt"></h3>
+                </div>
+
+                <div id="wordInputMode">
+                  <input
+                    id="wordAnswerInput"
+                    class="answer-input"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="输入英文后按 Enter"
+                  />
+                  <div class="answer-reveal hidden" id="wordAnswerReveal"></div>
+                  <p class="answer-feedback" id="wordFeedback" aria-live="polite"></p>
+                  <div class="button-row centered">
+                    <button class="primary-button" id="wordSubmitButton" type="button">提交</button>
+                    <button class="secondary-button" id="wordShowAnswerButton" type="button">显示答案</button>
+                    <button class="ghost-button" id="wordNextButton" type="button">下一个</button>
+                  </div>
+                </div>
+
+                <div id="wordReviewMode" class="hidden">
+                  <div class="masked-answer" id="wordMaskedMeaning">中文已遮住</div>
+                  <div class="answer-reveal hidden" id="wordMeaningReveal"></div>
+                  <p class="answer-feedback" id="wordReviewFeedback" aria-live="polite"></p>
+                  <div class="button-row centered">
+                    <button class="primary-button" id="wordRememberButton" type="button">记得</button>
+                    <button class="secondary-button" id="wordForgetButton" type="button">忘记了</button>
+                    <button class="ghost-button" id="wordRevealButton" type="button">显示中文</button>
+                  </div>
+                </div>
+
+                <div class="trainer-footer centered">
+                  <button class="danger-ghost-button" id="wordPauseButton" type="button">暂停练习</button>
+                  <button class="text-button" id="wordSwitchModeButton" type="button">切到英文自评</button>
+                </div>
+              </article>
+
+              <article class="trainer-card hidden" id="sentenceTrainer">
+                <div class="card-meta">
+                  <span id="sentenceFolderLabel"></span>
+                  <button class="icon-text-button" id="sentenceFavoriteButton" type="button">收藏</button>
+                </div>
+
+                <div class="prompt-block">
+                  <p class="prompt-label">中文</p>
+                  <h3 class="sentence-prompt" id="sentenceChinese"></h3>
+                </div>
+
+                <div class="sentence-builder" id="sentenceBuilder"></div>
+                <div class="answer-reveal hidden" id="sentenceHintReveal"></div>
+                <p class="answer-feedback" id="sentenceFeedback" aria-live="polite"></p>
+                <div class="button-row centered">
+                  <button class="primary-button" id="sentenceSubmitButton" type="button">提交</button>
+                  <button class="secondary-button" id="sentenceHintButton" type="button">提示</button>
+                  <button class="ghost-button" id="sentenceNextButton" type="button">下一个</button>
+                </div>
+                <div class="trainer-footer centered">
+                  <button class="danger-ghost-button" id="sentencePauseButton" type="button">暂停练习</button>
+                  <span class="keyboard-note">Space 下个词，方向键切词，Enter 提交</span>
+                </div>
+              </article>
+            </section>
+
+            <aside class="side-panel">
+              <h3>当前练习池</h3>
+              <dl class="metric-list">
+                <div>
+                  <dt>可练习</dt>
+                  <dd id="availableCount">0</dd>
+                </div>
+                <div>
+                  <dt>收藏</dt>
+                  <dd id="favoriteCount">0</dd>
+                </div>
+                <div>
+                  <dt>已暂停</dt>
+                  <dd id="pausedCount">0</dd>
+                </div>
+              </dl>
+              <p class="panel-note">答错、提示和跳过的内容会更快复现；答对后会自动降频并切到下一张。</p>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="importView" aria-labelledby="importTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Import</p>
+              <h2 id="importTitle">导入</h2>
+            </div>
+          </div>
+
+          <div class="import-grid">
+            <section class="tool-panel">
+              <div class="control-row">
+                <label>
+                  类型
+                  <select id="importType">
+                    <option value="word">单词 / 短语</option>
+                    <option value="sentence">句子</option>
+                  </select>
+                </label>
+                <label>
+                  文件夹
+                  <select id="importFolder"></select>
+                </label>
+                <button class="secondary-button" id="newFolderButton" type="button">新建文件夹</button>
+              </div>
+
+              <label class="stacked-label">
+                标签
+                <input
+                  id="importTags"
+                  type="text"
+                  list="tagSuggestions"
+                  placeholder="可选，用逗号分隔，如 酒店,口语"
+                />
+              </label>
+
+              <label class="stacked-label">
+                粘贴内容
+                <textarea
+                  id="importText"
+                  rows="14"
+                  spellcheck="false"
+                  placeholder="come in handy 派上用场&#10;do the laundry 洗衣服&#10;Yes, I've already booked online. 是的，我已经在网上预订了。"
+                ></textarea>
+              </label>
+
+              <div class="button-row">
+                <button class="primary-button" id="parseImportButton" type="button">解析预览</button>
+                <button class="secondary-button" id="confirmImportButton" type="button" disabled>确认导入</button>
+                <button class="ghost-button" id="clearImportButton" type="button">清空</button>
+              </div>
+            </section>
+
+            <section class="tool-panel">
+              <div class="panel-title-row">
+                <h3>解析结果</h3>
+                <span id="previewCount">0 条</span>
+              </div>
+              <div class="preview-list" id="importPreview"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="libraryView" aria-labelledby="libraryTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Library</p>
+              <h2 id="libraryTitle">列表</h2>
+            </div>
+            <button class="secondary-button" id="libraryNewFolderButton" type="button">新建文件夹</button>
+          </div>
+
+          <div class="library-toolbar">
+            <label>
+              类型
+              <select id="libraryType">
+                <option value="all">全部类型</option>
+                <option value="word">单词 / 短语</option>
+                <option value="sentence">句子</option>
+              </select>
+            </label>
+            <label>
+              文件夹
+              <select id="libraryFolder"></select>
+            </label>
+            <label>
+              状态
+              <select id="libraryStatus">
+                <option value="all">全部状态</option>
+                <option value="active">练习中</option>
+                <option value="paused">已暂停</option>
+              </select>
+            </label>
+            <label>
+              标签
+              <select id="libraryTag"></select>
+            </label>
+            <label class="switch">
+              <input id="libraryFavoritesOnly" type="checkbox" />
+              <span>只显示收藏</span>
+            </label>
+            <label class="search-label">
+              搜索
+              <input id="librarySearch" type="search" placeholder="英文 / 中文 / 标签" />
+            </label>
+          </div>
+
+          <div class="bulk-toolbar">
+            <label class="switch">
+              <input id="bulkModeToggle" type="checkbox" />
+              <span>批量选择</span>
+            </label>
+            <button class="ghost-button" id="selectVisibleButton" type="button" disabled>全选当前结果</button>
+            <button class="ghost-button" id="clearSelectionButton" type="button" disabled>清空选择</button>
+            <button class="danger-ghost-button" id="bulkDeleteButton" type="button" disabled>删除所选</button>
+            <span id="selectedCountLabel">已选 0 条</span>
+          </div>
+
+          <div class="library-list" id="libraryList"></div>
+        </section>
+
+        <section class="view" id="statsView" aria-labelledby="statsTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Stats</p>
+              <h2 id="statsTitle">统计</h2>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <section class="stat-card">
+              <span>总条目</span>
+              <strong id="totalItemsStat">0</strong>
+            </section>
+            <section class="stat-card">
+              <span>今日练习</span>
+              <strong id="todayItemsStat">0</strong>
+            </section>
+            <section class="stat-card">
+              <span>今日正确</span>
+              <strong id="todayCorrectStat">0</strong>
+            </section>
+            <section class="stat-card">
+              <span>收藏</span>
+              <strong id="favoriteItemsStat">0</strong>
+            </section>
+          </div>
+
+          <section class="tool-panel">
+            <div class="panel-title-row">
+              <h3>最近 7 天</h3>
+              <span id="weekTotalLabel">0 次</span>
+            </div>
+            <div class="bar-chart" id="weekChart"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <datalist id="tagSuggestions"></datalist>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

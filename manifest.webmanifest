@@ -1,0 +1,9 @@
+{
+  "name": "Super English",
+  "short_name": "Super English",
+  "description": "本地英语词句训练应用",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f8",
+  "theme_color": "#15615b"
+}
