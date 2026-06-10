@@ -61,8 +61,8 @@ const els = {
 
   practiceType: $("#practiceType"),
   practiceTypeButtons: $("#practiceTypeButtons"),
-  practiceFolder: $("#practiceFolder"),
-  practiceFavoritesOnly: $("#practiceFavoritesOnly"),
+  practiceScope: $("#practiceScope"),
+  practiceOrderMode: $("#practiceOrderMode"),
   practiceEmpty: $("#practiceEmpty"),
   wordTrainer: $("#wordTrainer"),
   sentenceTrainer: $("#sentenceTrainer"),
@@ -175,7 +175,7 @@ function bindEvents() {
     renderPracticeMetrics();
   });
 
-  [els.practiceFolder, els.practiceFavoritesOnly].forEach((control) => {
+  [els.practiceScope, els.practiceOrderMode].forEach((control) => {
     control.addEventListener("change", () => {
       currentPracticeItemId = null;
       loadPracticeCard();
@@ -443,7 +443,7 @@ function syncPracticeModeButtons() {
 function renderFolderOptions() {
   const allFolderOptions = [{ id: "all", name: "全部文件夹" }, ...state.folders];
   setSelectOptions(els.importFolder, state.folders, false);
-  setSelectOptions(els.practiceFolder, allFolderOptions, true);
+  renderPracticeScopeOptions();
   setSelectOptions(els.libraryFolder, allFolderOptions, true);
 }
 
@@ -463,6 +463,46 @@ function setSelectOptions(select, options, allowAll) {
   } else {
     select.value = allowAll ? "all" : "default";
   }
+}
+
+function renderPracticeScopeOptions() {
+  const previous = els.practiceScope.value || "all";
+  const folders = state.folders.filter((folder) => !folder.deletedAt);
+  els.practiceScope.textContent = "";
+
+  const allGroup = document.createElement("optgroup");
+  allGroup.label = "全部";
+  allGroup.append(
+    makeOption("all", "全部内容"),
+    makeOption("favorites:all", "全部收藏")
+  );
+  els.practiceScope.append(allGroup);
+
+  if (folders.length) {
+    const folderGroup = document.createElement("optgroup");
+    folderGroup.label = "文件夹";
+    folders.forEach((folder) => {
+      folderGroup.append(makeOption(`folder:${folder.id}`, folder.name));
+    });
+    els.practiceScope.append(folderGroup);
+
+    const favoriteGroup = document.createElement("optgroup");
+    favoriteGroup.label = "文件夹收藏";
+    folders.forEach((folder) => {
+      favoriteGroup.append(makeOption(`favorites:${folder.id}`, `${folder.name} · 收藏`));
+    });
+    els.practiceScope.append(favoriteGroup);
+  }
+
+  const values = Array.from(els.practiceScope.querySelectorAll("option")).map((option) => option.value);
+  els.practiceScope.value = values.includes(previous) ? previous : "all";
+}
+
+function makeOption(value, text) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = text;
+  return option;
 }
 
 function renderTagControls() {
@@ -502,7 +542,7 @@ function createFolder() {
   const existing = state.folders.find((folder) => folder.name === trimmed);
   if (existing) {
     els.importFolder.value = existing.id;
-    els.practiceFolder.value = existing.id;
+    els.practiceScope.value = `folder:${existing.id}`;
     els.libraryFolder.value = existing.id;
     showToast("文件夹已存在，已切换过去");
     return;
@@ -514,7 +554,7 @@ function createFolder() {
   saveState();
   renderFolderOptions();
   els.importFolder.value = folder.id;
-  els.practiceFolder.value = folder.id;
+  els.practiceScope.value = `folder:${folder.id}`;
   els.libraryFolder.value = folder.id;
   showToast("文件夹已创建");
 }
@@ -685,7 +725,7 @@ function loadPracticeCard(forceNew = true) {
 
   const currentStillValid = candidates.some((item) => item.id === currentPracticeItemId);
   if (forceNew || !currentStillValid) {
-    currentPracticeItemId = pickWeightedItem(candidates, currentPracticeItemId)?.id || candidates[0].id;
+    currentPracticeItemId = pickPracticeItem(candidates, currentPracticeItemId, forceNew)?.id || candidates[0].id;
   }
 
   const item = getCurrentPracticeItem();
@@ -695,8 +735,7 @@ function loadPracticeCard(forceNew = true) {
 }
 
 function getPracticeCandidates(type) {
-  const folderId = els.practiceFolder.value;
-  const favoritesOnly = els.practiceFavoritesOnly.checked;
+  const { folderId, favoritesOnly } = getPracticeScope();
 
   return state.items.filter((item) => {
     if (item.deletedAt) return false;
@@ -706,6 +745,29 @@ function getPracticeCandidates(type) {
     if (favoritesOnly && !item.favorite) return false;
     return true;
   });
+}
+
+function getPracticeScope() {
+  const value = els.practiceScope.value || "all";
+  if (value === "favorites:all") return { folderId: "all", favoritesOnly: true };
+  if (value.startsWith("folder:")) return { folderId: value.slice("folder:".length), favoritesOnly: false };
+  if (value.startsWith("favorites:")) return { folderId: value.slice("favorites:".length), favoritesOnly: true };
+  return { folderId: "all", favoritesOnly: false };
+}
+
+function pickPracticeItem(candidates, previousId, forceNew) {
+  if (els.practiceOrderMode.value === "sequential") {
+    return pickSequentialItem(candidates, previousId, forceNew);
+  }
+  return pickWeightedItem(candidates, previousId);
+}
+
+function pickSequentialItem(candidates, previousId, forceNew) {
+  if (!candidates.length) return null;
+  const currentIndex = candidates.findIndex((item) => item.id === previousId);
+  if (currentIndex === -1) return candidates[0];
+  if (!forceNew) return candidates[currentIndex];
+  return candidates[(currentIndex + 1) % candidates.length];
 }
 
 function pickWeightedItem(candidates, previousId) {
@@ -912,7 +974,8 @@ function renderWordTrainer(item) {
 }
 
 function renderWordBuilder(answer) {
-  const tokens = tokenizeAnswerWords(answer);
+  const parts = tokenizeWordAnswer(answer);
+  const tokens = parts.filter((part) => part.type === "word");
   const useBuilder = tokens.length > 1;
   els.wordInputMode.dataset.split = useBuilder ? "true" : "false";
   els.wordBuilder.classList.toggle("hidden", !useBuilder);
@@ -930,25 +993,49 @@ function renderWordBuilder(answer) {
     return;
   }
 
-  tokens.forEach((token, index) => {
-    const wrapper = document.createElement("label");
-    wrapper.className = "word-token";
-    wrapper.setAttribute("aria-label", `第 ${index + 1} 个单词`);
+  let tokenIndex = 0;
+  let currentPiece = null;
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.name = `nanstar-word-${index}`;
-    input.autocomplete = "new-password";
-    input.autocapitalize = "none";
-    input.inputMode = "text";
-    input.setAttribute("data-lpignore", "true");
-    input.setAttribute("data-1p-ignore", "true");
-    input.spellcheck = false;
-    input.dataset.answer = token;
-    input.dataset.index = String(index);
-    input.style.setProperty("--token-width", `${Math.max(5, Math.min(18, token.length + 2))}ch`);
-    wrapper.append(input);
-    els.wordBuilder.append(wrapper);
+  parts.forEach((part) => {
+    if (part.type === "word") {
+      currentPiece = document.createElement("span");
+      currentPiece.className = "word-piece";
+
+      const wrapper = document.createElement("label");
+      wrapper.className = "word-token";
+      wrapper.setAttribute("aria-label", `第 ${tokenIndex + 1} 个单词`);
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.name = `nanstar-word-${tokenIndex}`;
+      input.autocomplete = "new-password";
+      input.autocapitalize = "none";
+      input.inputMode = "text";
+      input.setAttribute("data-lpignore", "true");
+      input.setAttribute("data-1p-ignore", "true");
+      input.spellcheck = false;
+      input.dataset.answer = part.text;
+      input.dataset.index = String(tokenIndex);
+      input.style.setProperty("--token-width", `${Math.max(5, Math.min(18, part.text.length + 2))}ch`);
+      wrapper.append(input);
+      currentPiece.append(wrapper);
+      els.wordBuilder.append(currentPiece);
+      tokenIndex += 1;
+      return;
+    }
+
+    const separator = document.createElement("span");
+    separator.className = "word-separator";
+    separator.textContent = part.text;
+
+    if (currentPiece) {
+      currentPiece.append(separator);
+    } else {
+      const leading = document.createElement("span");
+      leading.className = "word-piece";
+      leading.append(separator);
+      els.wordBuilder.append(leading);
+    }
   });
 
   const firstInput = wordInputs()[0];
@@ -963,6 +1050,23 @@ function renderWordBuilder(answer) {
 
 function tokenizeAnswerWords(answer) {
   return Array.from(answer.matchAll(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu), (match) => match[0]);
+}
+
+function tokenizeWordAnswer(answer) {
+  const parts = [];
+  const wordRegex = /[\p{L}\p{N}]+(?:['’`][\p{L}\p{N}]+)*/gu;
+  let lastIndex = 0;
+
+  for (const match of answer.matchAll(wordRegex)) {
+    const separator = answer.slice(lastIndex, match.index).replace(/\s+/g, "");
+    if (separator) parts.push({ type: "separator", text: separator });
+    parts.push({ type: "word", text: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  const tail = answer.slice(lastIndex).replace(/\s+/g, "");
+  if (tail) parts.push({ type: "separator", text: tail });
+  return parts;
 }
 
 function wordInputs() {
@@ -1432,11 +1536,12 @@ function randomMessage(type) {
 
 function renderPracticeMetrics() {
   const type = els.practiceType.value;
-  const folderId = els.practiceFolder.value;
+  const { folderId, favoritesOnly } = getPracticeScope();
   const inRange = state.items.filter((item) => {
     if (item.deletedAt) return false;
     if (item.type !== type) return false;
     if (folderId && folderId !== "all" && item.folderId !== folderId) return false;
+    if (favoritesOnly && !item.favorite) return false;
     return true;
   });
 
@@ -1673,7 +1778,9 @@ function renderStats() {
 
 function renderTodayCount() {
   const today = state.activity[todayKey()] || { practice: 0 };
-  els.todayPracticeCount.textContent = `${today.practice || 0} 次练习`;
+  if (els.todayPracticeCount) {
+    els.todayPracticeCount.textContent = `${today.practice || 0} 次练习`;
+  }
 }
 
 function renderWeekChart() {

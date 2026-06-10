@@ -1,4 +1,4 @@
-const CACHE_NAME = "nanstar-lex-v6";
+const CACHE_NAME = "nanstar-lex-v7";
 const ASSETS = [
   "./",
   "./index.html",

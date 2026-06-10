@@ -30,11 +30,7 @@
       </aside>
 
       <main class="main">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">今日累计</p>
-            <strong id="todayPracticeCount">0 次练习</strong>
-          </div>
+        <header class="topbar utility-topbar">
           <div class="topbar-actions">
             <button class="secondary-button" id="quickImportButton" type="button">快速导入</button>
             <button class="primary-button" id="quickPracticeButton" type="button">回到练习</button>
@@ -68,11 +64,14 @@
           <div class="practice-toolbar">
             <label>
               范围
-              <select id="practiceFolder"></select>
+              <select id="practiceScope"></select>
             </label>
-            <label class="switch">
-              <input id="practiceFavoritesOnly" type="checkbox" />
-              <span>只练收藏</span>
+            <label>
+              出题方式
+              <select id="practiceOrderMode">
+                <option value="random" selected>随机出现</option>
+                <option value="sequential">按列表顺序</option>
+              </select>
             </label>
           </div>
 
