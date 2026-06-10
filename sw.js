@@ -1,10 +1,11 @@
-const CACHE_NAME = "nanstar-lex-v12";
+const CACHE_NAME = "nanstar-lex-v14";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./data/packs/index.json"
 ];
 
 self.addEventListener("install", (event) => {

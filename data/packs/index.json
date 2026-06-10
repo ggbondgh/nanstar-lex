@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-10",
+  "source": {
+    "name": "ECDICT",
+    "url": "https://github.com/skywind3000/ECDICT",
+    "license": "MIT",
+    "licenseUrl": "https://github.com/skywind3000/ECDICT/blob/master/LICENSE"
+  },
+  "packs": [
+    {
+      "id": "zk",
+      "name": "中考词汇",
+      "category": "国内考试",
+      "description": "ECDICT 标注的中考核心词汇，适合做基础词汇回收。",
+      "file": "./data/packs/zk.json",
+      "count": 1603,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "gk",
+      "name": "高考词汇",
+      "category": "国内考试",
+      "description": "ECDICT 标注的高考词汇，覆盖高中阶段常见考纲词。",
+      "file": "./data/packs/gk.json",
+      "count": 3676,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "cet4",
+      "name": "CET-4 四级词汇",
+      "category": "国内考试",
+      "description": "ECDICT 标注的大学英语四级词汇。",
+      "file": "./data/packs/cet4.json",
+      "count": 3849,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "cet6",
+      "name": "CET-6 六级词汇",
+      "category": "国内考试",
+      "description": "ECDICT 标注的大学英语六级词汇。",
+      "file": "./data/packs/cet6.json",
+      "count": 5407,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "ky",
+      "name": "考研词汇",
+      "category": "国内考试",
+      "description": "ECDICT 标注的考研英语词汇。",
+      "file": "./data/packs/ky.json",
+      "count": 4801,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "ielts",
+      "name": "IELTS 雅思词汇",
+      "category": "国际考试",
+      "description": "ECDICT 标注的雅思词汇，作为高频学习词书使用。",
+      "file": "./data/packs/ielts.json",
+      "count": 5040,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "toefl",
+      "name": "TOEFL 托福词汇",
+      "category": "国际考试",
+      "description": "ECDICT 标注的托福词汇，作为高频学习词书使用。",
+      "file": "./data/packs/toefl.json",
+      "count": 6974,
+      "source": "ECDICT",
+      "license": "MIT"
+    },
+    {
+      "id": "gre",
+      "name": "GRE 词汇",
+      "category": "国际考试",
+      "description": "ECDICT 标注的 GRE 词汇，难度较高。",
+      "file": "./data/packs/gre.json",
+      "count": 7504,
+      "source": "ECDICT",
+      "license": "MIT"
+    }
+  ]
+}

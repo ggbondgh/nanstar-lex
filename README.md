@@ -4,6 +4,19 @@
 
 当前能力包含单词/短语练习、句子练习、导入、文件夹、标签、收藏、统计和 Supabase 同步。
 
+## 内置词书
+
+内置词书位于“词书”页面，加入后会单独进入“词书库”，不会混入个人导入文件夹。当前词书由 [ECDICT](https://github.com/skywind3000/ECDICT) 的开源数据生成，遵循 MIT License。
+
+已生成的词书包括中考、高考、CET-4、CET-6、考研、IELTS、TOEFL 和 GRE。词书只作为学习辅助词表，不表示官方完整题库。
+
+重新生成词书资产：
+
+```powershell
+cd "D:\Super English"
+node tools\build-word-packs.js
+```
+
 ## 本地运行
 
 在项目目录启动静态服务：

@@ -1,6 +1,10 @@
 const STORAGE_KEY = "super-english-state-v1";
 const SYNC_SETTINGS_KEY = "super-english-sync-settings-v1";
 const SYNC_META_KEY = "super-english-sync-meta-v1";
+const WORD_PACK_INDEX_URL = "./data/packs/index.json";
+const BOOK_FOLDER_PREFIX = "book:";
+const WORD_PACK_INSTALL_CHUNK = 240;
+const LIBRARY_PAGE_SIZE = 200;
 
 const defaultState = {
   version: 1,
@@ -35,6 +39,11 @@ let bulkMode = false;
 let selectedIds = new Set();
 let practiceAutoFocusBlockedUntil = 0;
 let autoSyncDeferred = false;
+let wordPacks = [];
+let wordPackIndex = null;
+let wordPackLoadError = "";
+let packCache = new Map();
+let libraryRenderLimit = LIBRARY_PAGE_SIZE;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -111,6 +120,11 @@ const els = {
   previewCount: $("#previewCount"),
   tagSuggestions: $("#tagSuggestions"),
 
+  bookCategoryFilter: $("#bookCategoryFilter"),
+  bookSearch: $("#bookSearch"),
+  bookCatalog: $("#bookCatalog"),
+
+  librarySource: $("#librarySource"),
   libraryType: $("#libraryType"),
   libraryFolder: $("#libraryFolder"),
   libraryStatus: $("#libraryStatus"),
@@ -142,6 +156,7 @@ function init() {
   hydrateSyncForm();
   updateCredentialScope("practice");
   initializeSync();
+  loadWordPackIndex();
   loadPracticeCard();
 
   if ("serviceWorker" in navigator) {
@@ -216,20 +231,27 @@ function bindEvents() {
     });
   });
 
-  [els.libraryType, els.libraryFolder, els.libraryStatus, els.libraryTag, els.libraryFavoritesOnly].forEach((control) => {
+  els.bookCategoryFilter.addEventListener("change", renderBookCatalog);
+  els.bookSearch.addEventListener("input", renderBookCatalog);
+
+  [els.librarySource, els.libraryType, els.libraryFolder, els.libraryStatus, els.libraryTag, els.libraryFavoritesOnly].forEach((control) => {
     control.addEventListener("change", () => {
       selectedIds.clear();
+      resetLibraryRenderLimit();
+      if (control === els.librarySource) renderFolderOptions();
       renderLibrary();
     });
   });
   els.librarySearch.addEventListener("input", () => {
     selectedIds.clear();
+    resetLibraryRenderLimit();
     renderLibrary();
   });
 
   els.bulkModeToggle.addEventListener("change", () => {
     bulkMode = els.bulkModeToggle.checked;
     selectedIds.clear();
+    resetLibraryRenderLimit();
     renderLibrary();
   });
   els.selectVisibleButton.addEventListener("click", selectVisibleItems);
@@ -312,6 +334,17 @@ function repairLegacyState() {
   });
 
   state.items.forEach((item) => {
+    const bookId = getBookIdFromItem(item);
+    const source = bookId ? "book" : "personal";
+    if (item.source !== source) {
+      item.source = source;
+      changed = true;
+    }
+    if (bookId && item.bookId !== bookId) {
+      item.bookId = bookId;
+      item.folderId = getBookFolderId(bookId);
+      changed = true;
+    }
     if (!item.stats) {
       item.stats = newItemStats();
       changed = true;
@@ -381,6 +414,16 @@ function nowMs() {
   return Date.now();
 }
 
+function nextFrame() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+function resetLibraryRenderLimit() {
+  libraryRenderLimit = LIBRARY_PAGE_SIZE;
+}
+
 function touchFolder(folder) {
   folder.updatedAt = nowMs();
 }
@@ -398,12 +441,320 @@ function uid(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function isBookFolderId(folderId) {
+  return String(folderId || "").startsWith(BOOK_FOLDER_PREFIX);
+}
+
+function getBookFolderId(bookId) {
+  return `${BOOK_FOLDER_PREFIX}${bookId}`;
+}
+
+function getBookIdFromFolderId(folderId) {
+  return isBookFolderId(folderId) ? String(folderId).slice(BOOK_FOLDER_PREFIX.length) : "";
+}
+
+function getBookIdFromItem(item) {
+  if (!item) return "";
+  return item.bookId || getBookIdFromFolderId(item.folderId);
+}
+
+function isBookItem(item) {
+  return Boolean(getBookIdFromItem(item));
+}
+
+function getItemSource(item) {
+  return isBookItem(item) ? "book" : "personal";
+}
+
+function getBookPackMeta(bookId) {
+  return wordPackIndex?.packs?.find((pack) => pack.id === bookId) || null;
+}
+
+function getBookPackName(bookId) {
+  return getBookPackMeta(bookId)?.name || "词书";
+}
+
+function getInstalledBookIds() {
+  return Array.from(new Set(
+    state.items
+      .filter((item) => !item.deletedAt)
+      .map((item) => getBookIdFromItem(item))
+      .filter(Boolean)
+  ));
+}
+
+function getInstalledBookItemCount(bookId) {
+  return state.items.filter((item) => !item.deletedAt && getBookIdFromItem(item) === bookId).length;
+}
+
+async function loadWordPackIndex() {
+  try {
+    wordPackLoadError = "";
+    const response = await fetch(WORD_PACK_INDEX_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`词书索引加载失败：${response.status}`);
+    wordPackIndex = await response.json();
+    wordPacks = Array.isArray(wordPackIndex?.packs) ? wordPackIndex.packs : [];
+    renderAll();
+  } catch (error) {
+    console.warn(error);
+    wordPackLoadError = error.message || "词书索引加载失败";
+    wordPackIndex = null;
+    wordPacks = [];
+    renderBookCategoryOptions();
+    renderBookCatalog();
+    renderFolderOptions();
+  }
+}
+
+function renderBookCategoryOptions() {
+  if (!els.bookCategoryFilter) return;
+  const previous = els.bookCategoryFilter.value || "all";
+  const categories = Array.from(new Set(wordPacks.map((pack) => pack.category).filter(Boolean)));
+  els.bookCategoryFilter.textContent = "";
+  els.bookCategoryFilter.append(makeOption("all", "全部分类"));
+  categories.forEach((category) => els.bookCategoryFilter.append(makeOption(category, category)));
+  els.bookCategoryFilter.value = categories.includes(previous) ? previous : "all";
+}
+
+function getFilteredBookPacks() {
+  const category = els.bookCategoryFilter?.value || "all";
+  const query = els.bookSearch?.value.trim().toLowerCase() || "";
+  return wordPacks.filter((pack) => {
+    if (category !== "all" && pack.category !== category) return false;
+    if (!query) return true;
+    const haystack = `${pack.name} ${pack.category} ${pack.description}`.toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function renderBookCatalog() {
+  if (!els.bookCatalog) return;
+  els.bookCatalog.textContent = "";
+
+  if (wordPackLoadError) {
+    const error = document.createElement("div");
+    error.className = "empty-state";
+    const title = document.createElement("h3");
+    title.textContent = "词书暂时不可用";
+    const text = document.createElement("p");
+    text.textContent = wordPackLoadError;
+    error.append(title, text);
+    els.bookCatalog.append(error);
+    return;
+  }
+
+  if (!wordPacks.length) {
+    const loading = document.createElement("div");
+    loading.className = "empty-state";
+    const title = document.createElement("h3");
+    title.textContent = "词书加载中";
+    const text = document.createElement("p");
+    text.textContent = "正在准备内置词书目录。";
+    loading.append(title, text);
+    els.bookCatalog.append(loading);
+    return;
+  }
+
+  const packs = getFilteredBookPacks();
+  if (!packs.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    const title = document.createElement("h3");
+    title.textContent = "没有匹配词书";
+    const text = document.createElement("p");
+    text.textContent = "可以换个关键词，或者切回全部分类。";
+    empty.append(title, text);
+    els.bookCatalog.append(empty);
+    return;
+  }
+
+  packs.forEach((pack) => els.bookCatalog.append(createWordPackCard(pack)));
+}
+
+function createWordPackCard(pack) {
+  const installedCount = getInstalledBookItemCount(pack.id);
+  const installed = installedCount > 0;
+  const favoriteCount = state.items.filter((item) => !item.deletedAt && getBookIdFromItem(item) === pack.id && item.favorite).length;
+
+  const article = document.createElement("article");
+  article.className = `wordbook-card${installed ? " installed" : ""}`;
+
+  const header = document.createElement("div");
+  header.className = "wordbook-card-head";
+
+  const titleWrap = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = pack.name;
+  const desc = document.createElement("p");
+  desc.textContent = pack.description;
+  titleWrap.append(title, desc);
+
+  const badge = document.createElement("span");
+  badge.className = `wordbook-status ${installed ? "installed" : ""}`;
+  badge.textContent = installed ? "已加入" : "未加入";
+  header.append(titleWrap, badge);
+
+  const meta = document.createElement("div");
+  meta.className = "library-meta";
+  meta.append(
+    makePill(pack.category),
+    makePill(`${pack.count} 词`),
+    makePill(pack.source || "ECDICT")
+  );
+  if (favoriteCount) meta.append(makeTag(`收藏 ${favoriteCount}`, "favorite"));
+
+  const stats = document.createElement("small");
+  stats.textContent = installed
+    ? `已加入 ${installedCount} 条，可直接进入练习或列表查看。`
+    : "加入后会单独进入词书库，不会放进你的个人文件夹。";
+
+  const actions = document.createElement("div");
+  actions.className = "library-actions";
+
+  const installButton = document.createElement("button");
+  installButton.type = "button";
+  installButton.className = installed ? "secondary-button" : "primary-button";
+  installButton.textContent = installed ? "重新同步这本" : "加入词书库";
+  installButton.addEventListener("click", async () => {
+    const previousLabel = installButton.textContent;
+    installButton.disabled = true;
+    installButton.textContent = "处理中...";
+    try {
+      const result = await installWordPack(pack.id);
+      showToast(result);
+    } finally {
+      installButton.textContent = previousLabel;
+      installButton.disabled = false;
+    }
+  });
+
+  const practiceButton = document.createElement("button");
+  practiceButton.type = "button";
+  practiceButton.className = "ghost-button";
+  practiceButton.textContent = "练这本";
+  practiceButton.disabled = !installed;
+  practiceButton.addEventListener("click", () => activateBookPractice(pack.id));
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "danger-ghost-button";
+  removeButton.textContent = "移出词书库";
+  removeButton.disabled = !installed;
+  removeButton.addEventListener("click", () => removeWordPack(pack.id));
+
+  actions.append(installButton, practiceButton, removeButton);
+  article.append(header, meta, stats, actions);
+  return article;
+}
+
+async function ensureWordPackLoaded(bookId) {
+  if (packCache.has(bookId)) return packCache.get(bookId);
+  const meta = getBookPackMeta(bookId);
+  if (!meta?.file) throw new Error("词书文件不存在");
+
+  const response = await fetch(meta.file, { cache: "no-store" });
+  if (!response.ok) throw new Error(`词书加载失败：${meta.name}`);
+  const data = await response.json();
+  packCache.set(bookId, data);
+  return data;
+}
+
+async function installWordPack(bookId) {
+  const pack = await ensureWordPackLoaded(bookId);
+  const timestamp = nowMs();
+  const existingById = new Map(state.items.map((item) => [item.id, item]));
+  let added = 0;
+  let revived = 0;
+
+  for (let index = 0; index < pack.items.length; index += WORD_PACK_INSTALL_CHUNK) {
+    const chunk = pack.items.slice(index, index + WORD_PACK_INSTALL_CHUNK);
+    chunk.forEach((entry) => {
+      const existing = existingById.get(entry.id);
+      if (existing) {
+        const wasDeleted = Boolean(existing.deletedAt);
+        existing.type = "word";
+        existing.english = entry.english;
+        existing.chinese = entry.chinese;
+        existing.folderId = getBookFolderId(bookId);
+        existing.bookId = bookId;
+        existing.source = "book";
+        existing.deletedAt = null;
+        existing.updatedAt = timestamp;
+        if (!existing.createdAt) existing.createdAt = timestamp;
+        if (!existing.stats) existing.stats = newItemStats();
+        if (!Array.isArray(existing.tags)) existing.tags = [];
+        if (wasDeleted) revived += 1;
+        return;
+      }
+
+      const item = {
+        id: entry.id,
+        type: "word",
+        english: entry.english,
+        chinese: entry.chinese,
+        folderId: getBookFolderId(bookId),
+        bookId,
+        source: "book",
+        tags: [],
+        favorite: false,
+        paused: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        stats: newItemStats()
+      };
+      state.items.push(item);
+      existingById.set(item.id, item);
+      added += 1;
+    });
+
+    showToast(`正在加入 ${pack.name}：${Math.min(index + chunk.length, pack.items.length)} / ${pack.items.length}`);
+    await nextFrame();
+  }
+
+  saveState();
+  refreshVisibleViewAfterDataChange({ resetLibrary: true });
+  return revived ? `已恢复 ${revived} 条，并新增 ${added} 条到 ${pack.name}` : `已加入 ${pack.name}，共 ${added} 条`;
+}
+
+function removeWordPack(bookId) {
+  const pack = getBookPackMeta(bookId);
+  const items = state.items.filter((item) => !item.deletedAt && getBookIdFromItem(item) === bookId);
+  if (!items.length) return;
+
+  const ok = confirm(`移出「${pack?.name || "这本词书"}」？它会从练习和词书库中消失，但之后还能重新加入。`);
+  if (!ok) return;
+
+  const timestamp = nowMs();
+  items.forEach((item) => {
+    item.deletedAt = timestamp;
+    item.updatedAt = timestamp;
+  });
+
+  if (items.some((item) => item.id === currentPracticeItemId)) currentPracticeItemId = null;
+  saveState();
+  renderAll();
+  loadPracticeCard(true);
+  showToast(`已移出 ${pack?.name || "词书"}`);
+}
+
+function activateBookPractice(bookId) {
+  els.practiceType.value = "word";
+  syncPracticeModeButtons();
+  renderPracticeScopeOptions();
+  els.practiceScope.value = getBookFolderId(bookId);
+  currentPracticeItemId = null;
+  switchView("practice");
+  loadPracticeCard(true);
+  renderPracticeMetrics();
+}
+
 function switchView(viewName) {
   els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   els.views.forEach((view) => view.classList.toggle("active", view.id === `${viewName}View`));
   updateCredentialScope(viewName);
 
   if (viewName === "practice") loadPracticeCard(false);
+  if (viewName === "books") renderBookCatalog();
   if (viewName === "library") renderLibrary();
   if (viewName === "stats") renderStats();
 }
@@ -420,12 +771,40 @@ function updateCredentialScope(viewName = getActiveView()) {
 
 function renderAll() {
   renderFolderOptions();
+  renderBookCategoryOptions();
+  renderBookCatalog();
   renderTagControls();
   syncPracticeModeButtons();
   renderPracticeMetrics();
   renderLibrary();
   renderStats();
   renderTodayCount();
+}
+
+function refreshVisibleViewAfterDataChange({ reloadPractice = false, resetLibrary = false } = {}) {
+  renderFolderOptions();
+
+  const activeView = getActiveView();
+  if (activeView === "books") {
+    renderBookCategoryOptions();
+    renderBookCatalog();
+  }
+
+  if (activeView === "library") {
+    if (resetLibrary) resetLibraryRenderLimit();
+    renderTagControls();
+    renderLibrary();
+  }
+
+  if (activeView === "practice") {
+    syncPracticeModeButtons();
+    renderPracticeMetrics();
+    loadPracticeCard(reloadPractice);
+  }
+
+  if (activeView === "stats") {
+    renderStats();
+  }
 }
 
 function syncPracticeModeButtons() {
@@ -435,10 +814,10 @@ function syncPracticeModeButtons() {
 }
 
 function renderFolderOptions() {
-  const allFolderOptions = [{ id: "all", name: "全部文件夹" }, ...state.folders];
-  setSelectOptions(els.importFolder, state.folders, false);
+  const folders = state.folders.filter((folder) => !folder.deletedAt);
+  setSelectOptions(els.importFolder, folders, false);
   renderPracticeScopeOptions();
-  setSelectOptions(els.libraryFolder, allFolderOptions, true);
+  renderLibraryScopeOptions();
 }
 
 function setSelectOptions(select, options, allowAll) {
@@ -460,14 +839,15 @@ function setSelectOptions(select, options, allowAll) {
 }
 
 function renderPracticeScopeOptions() {
-  const previous = els.practiceScope.value || "all";
+  const previous = els.practiceScope.value || "personal:all";
   const folders = state.folders.filter((folder) => !folder.deletedAt);
+  const installedBookIds = getInstalledBookIds();
   els.practiceScope.textContent = "";
 
   const allGroup = document.createElement("optgroup");
-  allGroup.label = "全部";
+  allGroup.label = "常用";
   allGroup.append(
-    makeOption("all", "全部内容"),
+    makeOption("personal:all", "个人全部"),
     makeOption("favorites:all", "全部收藏")
   );
   els.practiceScope.append(allGroup);
@@ -481,8 +861,65 @@ function renderPracticeScopeOptions() {
     els.practiceScope.append(folderGroup);
   }
 
+  if (installedBookIds.length) {
+    const bookGroup = document.createElement("optgroup");
+    bookGroup.label = "词书";
+    bookGroup.append(makeOption("books:all", "全部词书"));
+    installedBookIds.forEach((bookId) => {
+      bookGroup.append(makeOption(getBookFolderId(bookId), getBookPackName(bookId)));
+    });
+    els.practiceScope.append(bookGroup);
+  }
+
   const values = Array.from(els.practiceScope.querySelectorAll("option")).map((option) => option.value);
-  els.practiceScope.value = values.includes(previous) ? previous : previous.startsWith("favorites:") ? "favorites:all" : "all";
+  const normalizedPrevious = previous === "all" ? "personal:all" : previous;
+  els.practiceScope.value = values.includes(normalizedPrevious)
+    ? normalizedPrevious
+    : normalizedPrevious.startsWith("favorites:")
+      ? "favorites:all"
+      : "personal:all";
+}
+
+function renderLibraryScopeOptions() {
+  const source = els.librarySource?.value || "personal";
+  const previous = els.libraryFolder.value || "all";
+  const folders = state.folders.filter((folder) => !folder.deletedAt);
+  const installedBookIds = getInstalledBookIds();
+  els.libraryFolder.textContent = "";
+
+  if (source === "all") {
+    els.libraryFolder.append(makeOption("all", "全部范围"));
+    const personalGroup = document.createElement("optgroup");
+    personalGroup.label = "个人文件夹";
+    personalGroup.append(makeOption("personal:all", "个人全部"));
+    folders.forEach((folder) => personalGroup.append(makeOption(`folder:${folder.id}`, folder.name)));
+    els.libraryFolder.append(personalGroup);
+
+    if (installedBookIds.length) {
+      const bookGroup = document.createElement("optgroup");
+      bookGroup.label = "词书";
+      bookGroup.append(makeOption("books:all", "全部词书"));
+      installedBookIds.forEach((bookId) => bookGroup.append(makeOption(getBookFolderId(bookId), getBookPackName(bookId))));
+      els.libraryFolder.append(bookGroup);
+    }
+  } else if (source === "books") {
+    els.libraryFolder.append(makeOption("books:all", "全部词书"));
+    installedBookIds.forEach((bookId) => els.libraryFolder.append(makeOption(getBookFolderId(bookId), getBookPackName(bookId))));
+  } else {
+    els.libraryFolder.append(makeOption("personal:all", "个人全部"));
+    folders.forEach((folder) => els.libraryFolder.append(makeOption(`folder:${folder.id}`, folder.name)));
+  }
+
+  const values = Array.from(els.libraryFolder.querySelectorAll("option")).map((option) => option.value);
+  if (values.includes(previous)) {
+    els.libraryFolder.value = previous;
+  } else if (source === "books") {
+    els.libraryFolder.value = "books:all";
+  } else if (source === "all") {
+    els.libraryFolder.value = "all";
+  } else {
+    els.libraryFolder.value = "personal:all";
+  }
 }
 
 function makeOption(value, text) {
@@ -646,6 +1083,7 @@ function confirmImport() {
       english: entry.english,
       chinese: entry.chinese,
       folderId,
+      source: "personal",
       tags,
       favorite: false,
       paused: false,
@@ -722,24 +1160,49 @@ function loadPracticeCard(forceNew = true) {
 }
 
 function getPracticeCandidates(type) {
-  const { folderId, favoritesOnly } = getPracticeScope();
+  const scope = getPracticeScope();
 
   return state.items.filter((item) => {
     if (item.deletedAt) return false;
     if (item.type !== type) return false;
     if (item.paused) return false;
-    if (folderId && folderId !== "all" && item.folderId !== folderId) return false;
-    if (favoritesOnly && !item.favorite) return false;
+    if (!itemMatchesScope(item, scope)) return false;
     return true;
   });
 }
 
 function getPracticeScope() {
   const value = els.practiceScope.value || "all";
-  if (value === "favorites:all") return { folderId: "all", favoritesOnly: true };
-  if (value.startsWith("folder:")) return { folderId: value.slice("folder:".length), favoritesOnly: false };
-  if (value.startsWith("favorites:")) return { folderId: "all", favoritesOnly: true };
-  return { folderId: "all", favoritesOnly: false };
+  return parseContentScope(value);
+}
+
+function parseContentScope(value) {
+  if (value === "favorites:all" || value.startsWith("favorites:")) {
+    return { source: "all", folderId: "all", bookId: "", favoritesOnly: true };
+  }
+  if (value === "books:all") {
+    return { source: "book", folderId: "all", bookId: "", favoritesOnly: false };
+  }
+  if (isBookFolderId(value)) {
+    return { source: "book", folderId: value, bookId: getBookIdFromFolderId(value), favoritesOnly: false };
+  }
+  if (value.startsWith("folder:")) {
+    return { source: "personal", folderId: value.slice("folder:".length), bookId: "", favoritesOnly: false };
+  }
+  if (value === "all") {
+    return { source: "all", folderId: "all", bookId: "", favoritesOnly: false };
+  }
+  return { source: "personal", folderId: "all", bookId: "", favoritesOnly: false };
+}
+
+function itemMatchesScope(item, scope) {
+  if (scope.favoritesOnly && !item.favorite) return false;
+  const source = getItemSource(item);
+  if (scope.source === "personal" && source !== "personal") return false;
+  if (scope.source === "book" && source !== "book") return false;
+  if (scope.bookId && getBookIdFromItem(item) !== scope.bookId) return false;
+  if (scope.folderId && scope.folderId !== "all" && source === "personal" && item.folderId !== scope.folderId) return false;
+  return true;
 }
 
 function pickPracticeItem(candidates, previousId, forceNew) {
@@ -1551,12 +2014,11 @@ function randomMessage(type) {
 
 function renderPracticeMetrics() {
   const type = els.practiceType.value;
-  const { folderId, favoritesOnly } = getPracticeScope();
+  const scope = getPracticeScope();
   const inRange = state.items.filter((item) => {
     if (item.deletedAt) return false;
     if (item.type !== type) return false;
-    if (folderId && folderId !== "all" && item.folderId !== folderId) return false;
-    if (favoritesOnly && !item.favorite) return false;
+    if (!itemMatchesScope(item, scope)) return false;
     return true;
   });
 
@@ -1566,8 +2028,9 @@ function renderPracticeMetrics() {
 }
 
 function getFilteredLibraryItems() {
+  const source = els.librarySource.value;
   const type = els.libraryType.value;
-  const folderId = els.libraryFolder.value;
+  const scope = parseContentScope(els.libraryFolder.value || (source === "books" ? "books:all" : "personal:all"));
   const status = els.libraryStatus.value;
   const tag = els.libraryTag.value;
   const favoritesOnly = els.libraryFavoritesOnly.checked;
@@ -1576,8 +2039,10 @@ function getFilteredLibraryItems() {
   return state.items
     .filter((item) => {
       if (item.deletedAt) return false;
+      if (source === "personal" && getItemSource(item) !== "personal") return false;
+      if (source === "books" && getItemSource(item) !== "book") return false;
       if (type !== "all" && item.type !== type) return false;
-      if (folderId !== "all" && item.folderId !== folderId) return false;
+      if (!itemMatchesScope(item, scope)) return false;
       if (status === "active" && item.paused) return false;
       if (status === "paused" && !item.paused) return false;
       if (tag !== "all" && !(item.tags || []).includes(tag)) return false;
@@ -1593,6 +2058,7 @@ function renderLibrary() {
   const items = getFilteredLibraryItems();
   const visibleIds = new Set(items.map((item) => item.id));
   selectedIds = new Set([...selectedIds].filter((id) => visibleIds.has(id)));
+  const visibleItems = items.slice(0, libraryRenderLimit);
 
   els.libraryList.textContent = "";
   renderBulkToolbar(items);
@@ -1609,7 +2075,33 @@ function renderLibrary() {
     return;
   }
 
-  items.forEach((item) => els.libraryList.append(createLibraryItem(item)));
+  const fragment = document.createDocumentFragment();
+  visibleItems.forEach((item) => fragment.append(createLibraryItem(item)));
+  els.libraryList.append(fragment);
+
+  if (visibleItems.length < items.length) {
+    els.libraryList.append(createLoadMoreLibraryButton(items.length, visibleItems.length));
+  }
+}
+
+function createLoadMoreLibraryButton(total, rendered) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "library-load-more";
+
+  const label = document.createElement("span");
+  label.textContent = `已显示 ${rendered} / ${total} 条`;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = "加载更多";
+  button.addEventListener("click", () => {
+    libraryRenderLimit += LIBRARY_PAGE_SIZE;
+    renderLibrary();
+  });
+
+  wrapper.append(label, button);
+  return wrapper;
 }
 
 function renderBulkToolbar(items) {
@@ -1652,9 +2144,10 @@ function createLibraryItem(item) {
   meta.className = "library-meta";
   meta.append(
     makePill(item.type === "word" ? "单词 / 短语" : "句子"),
-    makePill(getFolderName(item.folderId)),
+    makePill(isBookItem(item) ? getBookPackName(getBookIdFromItem(item)) : getFolderName(item.folderId)),
     makePill(item.paused ? "已暂停" : "练习中", item.paused ? "paused" : "")
   );
+  meta.append(makePill(isBookItem(item) ? "词书库" : "个人库"));
   if (item.favorite) meta.append(makeTag("收藏", "favorite"));
   (item.tags || []).forEach((tag) => meta.append(makeTag(tag)));
 
@@ -1680,7 +2173,7 @@ function createLibraryItem(item) {
       renderAll();
       loadPracticeCard(true);
     }),
-    actionButton("彻底删除", () => deleteItem(item.id), "danger-ghost-button")
+    actionButton(isBookItem(item) ? "移出词书库" : "彻底删除", () => deleteItem(item.id), "danger-ghost-button")
   );
 
   article.append(main, meta, stats, tagEditor, actions);
@@ -1754,7 +2247,9 @@ function actionButton(label, handler, className = "ghost-button") {
 function deleteItem(id) {
   const item = state.items.find((entry) => entry.id === id);
   if (!item) return;
-  const ok = confirm(`彻底删除「${item.english}」？这个操作不会进回收站。`);
+  const ok = confirm(isBookItem(item)
+    ? `移出词书条目「${item.english}」？之后可以重新加入这本词书。`
+    : `彻底删除「${item.english}」？这个操作不会进回收站。`);
   if (!ok) return;
   item.deletedAt = nowMs();
   touchItem(item);
@@ -1832,6 +2327,8 @@ function renderWeekChart() {
 }
 
 function getFolderName(folderId) {
+  const bookId = getBookIdFromFolderId(folderId);
+  if (bookId) return getBookPackName(bookId);
   return state.folders.find((folder) => folder.id === folderId)?.name || "默认";
 }
 
@@ -2333,12 +2830,15 @@ function mergeRemoteItems(rows) {
   const localById = new Map(state.items.map((item) => [item.id, item]));
 
   rows.forEach((row) => {
+    const bookId = getBookIdFromFolderId(row.folder_id || "");
     const incoming = {
       id: row.id,
       type: row.type,
       english: row.english,
       chinese: row.chinese,
       folderId: row.folder_id || "default",
+      source: bookId ? "book" : "personal",
+      bookId: bookId || undefined,
       tags: row.tags || [],
       favorite: Boolean(row.favorite),
       paused: Boolean(row.paused),
