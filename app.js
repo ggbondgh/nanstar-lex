@@ -481,17 +481,10 @@ function renderPracticeScopeOptions() {
       folderGroup.append(makeOption(`folder:${folder.id}`, folder.name));
     });
     els.practiceScope.append(folderGroup);
-
-    const favoriteGroup = document.createElement("optgroup");
-    favoriteGroup.label = "文件夹收藏";
-    folders.forEach((folder) => {
-      favoriteGroup.append(makeOption(`favorites:${folder.id}`, `${folder.name} · 收藏`));
-    });
-    els.practiceScope.append(favoriteGroup);
   }
 
   const values = Array.from(els.practiceScope.querySelectorAll("option")).map((option) => option.value);
-  els.practiceScope.value = values.includes(previous) ? previous : "all";
+  els.practiceScope.value = values.includes(previous) ? previous : previous.startsWith("favorites:") ? "favorites:all" : "all";
 }
 
 function makeOption(value, text) {
@@ -747,7 +740,7 @@ function getPracticeScope() {
   const value = els.practiceScope.value || "all";
   if (value === "favorites:all") return { folderId: "all", favoritesOnly: true };
   if (value.startsWith("folder:")) return { folderId: value.slice("folder:".length), favoritesOnly: false };
-  if (value.startsWith("favorites:")) return { folderId: value.slice("favorites:".length), favoritesOnly: true };
+  if (value.startsWith("favorites:")) return { folderId: "all", favoritesOnly: true };
   return { folderId: "all", favoritesOnly: false };
 }
 
