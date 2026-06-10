@@ -101,7 +101,8 @@
                     id="wordAnswerInput"
                     class="answer-input"
                     type="text"
-                    autocomplete="off"
+                    name="nanstar-practice-answer"
+                    autocomplete="new-password"
                     autocapitalize="none"
                     inputmode="text"
                     data-lpignore="true"
@@ -216,11 +217,13 @@
                     <option value="sentence">句子</option>
                   </select>
                 </label>
-                <label>
-                  文件夹
-                  <select id="importFolder"></select>
-                </label>
-                <button class="secondary-button" id="newFolderButton" type="button">新建文件夹</button>
+                <div class="inline-field-group">
+                  <label>
+                    文件夹
+                    <select id="importFolder"></select>
+                  </label>
+                  <button class="secondary-button compact-action" id="newFolderButton" type="button">新建</button>
+                </div>
               </div>
 
               <label class="stacked-label">

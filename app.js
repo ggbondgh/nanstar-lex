@@ -142,6 +142,7 @@ function init() {
   renderAll();
   bindEvents();
   hydrateSyncForm();
+  updateCredentialScope("practice");
   initializeSync();
   loadPracticeCard();
 
@@ -402,10 +403,21 @@ function uid(prefix) {
 function switchView(viewName) {
   els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === viewName));
   els.views.forEach((view) => view.classList.toggle("active", view.id === `${viewName}View`));
+  updateCredentialScope(viewName);
 
   if (viewName === "practice") loadPracticeCard(false);
   if (viewName === "library") renderLibrary();
   if (viewName === "stats") renderStats();
+}
+
+function updateCredentialScope(viewName = getActiveView()) {
+  const settingsActive = viewName === "settings";
+  [els.syncUrlInput, els.syncAnonKeyInput, els.syncEmailInput, els.syncPasswordInput].forEach((input) => {
+    input.disabled = !settingsActive || syncInProgress;
+  });
+  els.syncEmailInput.autocomplete = settingsActive ? "email" : "off";
+  els.syncPasswordInput.type = settingsActive ? "password" : "text";
+  els.syncPasswordInput.autocomplete = settingsActive ? "current-password" : "off";
 }
 
 function renderAll() {
@@ -782,7 +794,8 @@ function renderWordBuilder(answer) {
 
     const input = document.createElement("input");
     input.type = "text";
-    input.autocomplete = "off";
+    input.name = `nanstar-word-${index}`;
+    input.autocomplete = "new-password";
     input.autocapitalize = "none";
     input.inputMode = "text";
     input.setAttribute("data-lpignore", "true");
@@ -979,7 +992,8 @@ function renderSentenceBuilder(sentence) {
 
       const input = document.createElement("input");
       input.type = "text";
-      input.autocomplete = "off";
+      input.name = `nanstar-sentence-${wordIndex}`;
+      input.autocomplete = "new-password";
       input.autocapitalize = "none";
       input.inputMode = "text";
       input.setAttribute("data-lpignore", "true");
@@ -1810,6 +1824,7 @@ function getSyncStateFromText(text) {
 
 function setSyncBusy(busy, label = "") {
   syncInProgress = busy;
+  updateCredentialScope();
   [els.saveSyncConfigButton, els.syncSignUpButton, els.syncSignInButton, els.syncNowButton, els.syncSignOutButton].forEach((button) => {
     button.disabled = busy || ((button === els.syncNowButton || button === els.syncSignOutButton) && !currentUser);
   });

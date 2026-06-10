@@ -466,6 +466,22 @@ button {
   min-width: 160px;
 }
 
+.inline-field-group {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.inline-field-group label {
+  min-width: 0;
+}
+
+.compact-action {
+  min-height: 44px;
+  padding-inline: 16px;
+}
+
 .practice-layout,
 .import-grid {
   display: grid;
@@ -1216,6 +1232,23 @@ button:disabled {
 
   .practice-toolbar label {
     min-width: 0;
+  }
+
+  .control-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .control-row label {
+    min-width: 0;
+  }
+
+  .inline-field-group {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .compact-action {
+    min-width: 70px;
   }
 
   .practice-layout {
