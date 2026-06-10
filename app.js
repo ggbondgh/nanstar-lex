@@ -1094,6 +1094,10 @@ function submitWordAnswer() {
 }
 
 function evaluateWordBuilder(inputs) {
+  if (wordBuilderAllowsFlexibleOrder()) {
+    return evaluateFlexibleWordBuilder(inputs);
+  }
+
   let allCorrect = true;
 
   inputs.forEach((input) => {
@@ -1102,6 +1106,37 @@ function evaluateWordBuilder(inputs) {
     input.classList.toggle("correct", correct);
     input.classList.toggle("error", !correct);
     if (!correct) allCorrect = false;
+  });
+
+  return allCorrect;
+}
+
+function wordBuilderAllowsFlexibleOrder() {
+  const separators = Array.from(els.wordBuilder.querySelectorAll(".word-separator"));
+  return separators.length > 0 && separators.every((separator) => /^[/／]+$/u.test(separator.textContent.trim()));
+}
+
+function evaluateFlexibleWordBuilder(inputs) {
+  let allCorrect = true;
+  const remaining = new Map();
+
+  inputs.forEach((input) => {
+    const answer = normalizeAnswer(input.dataset.answer || "");
+    remaining.set(answer, (remaining.get(answer) || 0) + 1);
+  });
+
+  inputs.forEach((input) => {
+    const value = normalizeAnswer(input.value);
+    const correct = Boolean(value && remaining.get(value));
+    input.classList.toggle("has-value", input.value.trim().length > 0);
+    input.classList.toggle("correct", correct);
+    input.classList.toggle("error", !correct);
+
+    if (correct) {
+      remaining.set(value, remaining.get(value) - 1);
+    } else {
+      allCorrect = false;
+    }
   });
 
   return allCorrect;
