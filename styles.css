@@ -886,14 +886,6 @@ textarea {
   gap: 10px;
 }
 
-.review-action-row {
-  width: min(220px, 100%);
-}
-
-.review-action-row button {
-  width: 100%;
-}
-
 .action-row button {
   min-width: 104px;
   min-height: 44px;
@@ -1417,11 +1409,6 @@ button:disabled {
     min-width: 0;
     min-height: 46px;
     padding: 9px 8px;
-  }
-
-  .review-action-row {
-    grid-template-columns: minmax(150px, 220px);
-    justify-content: center;
   }
 
   .meaning-reveal-card {

@@ -85,7 +85,6 @@ const els = {
   wordShowAnswerButton: $("#wordShowAnswerButton"),
   wordNextButton: $("#wordNextButton"),
   wordMaskedMeaning: $("#wordMaskedMeaning"),
-  wordReviewNextButton: $("#wordReviewNextButton"),
   wordPauseButton: $("#wordPauseButton"),
   wordSwitchModeButton: $("#wordSwitchModeButton"),
 
@@ -192,8 +191,7 @@ function bindEvents() {
   els.wordSubmitButton.addEventListener("click", submitWordAnswer);
   els.wordShowAnswerButton.addEventListener("click", toggleWordAnswer);
   els.wordNextButton.addEventListener("click", nextWordCard);
-  els.wordMaskedMeaning.addEventListener("click", toggleWordReviewAnswer);
-  els.wordReviewNextButton.addEventListener("click", nextWordReviewCard);
+  els.wordMaskedMeaning.addEventListener("click", nextWordReviewCard);
   els.wordPauseButton.addEventListener("click", pauseCurrentPracticeItem);
   els.wordSwitchModeButton.addEventListener("click", switchWordTrainingMode);
   els.wordFavoriteButton.addEventListener("click", toggleCurrentFavorite);
@@ -1195,12 +1193,6 @@ function nextWordCard() {
   }
   loadPracticeCard(true);
   renderAll();
-}
-
-function toggleWordReviewAnswer() {
-  const item = getCurrentPracticeItem();
-  if (!item) return;
-  setWordReviewAnswerVisible(true, item);
 }
 
 function setWordReviewAnswerVisible(visible, item = getCurrentPracticeItem()) {
