@@ -102,27 +102,40 @@
                     class="answer-input"
                     type="text"
                     autocomplete="off"
+                    autocapitalize="none"
+                    inputmode="text"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     spellcheck="false"
                     placeholder="输入英文后按 Enter"
                   />
                   <div class="answer-reveal hidden" id="wordAnswerReveal"></div>
                   <p class="answer-feedback" id="wordFeedback" aria-live="polite"></p>
-                  <div class="button-row centered">
+                  <div class="button-row centered action-row">
                     <button class="primary-button" id="wordSubmitButton" type="button">提交</button>
                     <button class="secondary-button" id="wordShowAnswerButton" type="button">显示答案</button>
                     <button class="ghost-button" id="wordNextButton" type="button">下一个</button>
                   </div>
-                  <p class="keyboard-note">Enter 提交，Ctrl+; 显示/隐藏答案，Ctrl+. 下一个，短语可用 Space 跳词</p>
+                  <div class="shortcut-strip" aria-label="快捷键">
+                    <span><kbd>Enter</kbd>提交</span>
+                    <span><kbd>Ctrl+;</kbd>答案</span>
+                    <span><kbd>Ctrl+.</kbd>下一个</span>
+                    <span data-shortcut="split-only"><kbd>Space</kbd>跳词</span>
+                  </div>
                 </div>
 
                 <div id="wordReviewMode" class="hidden">
                   <div class="masked-answer" id="wordMaskedMeaning">中文已遮住</div>
                   <div class="answer-reveal hidden" id="wordMeaningReveal"></div>
                   <p class="answer-feedback" id="wordReviewFeedback" aria-live="polite"></p>
-                  <div class="button-row centered">
+                  <div class="button-row centered action-row">
                     <button class="primary-button" id="wordRememberButton" type="button">记得</button>
                     <button class="secondary-button" id="wordForgetButton" type="button">忘记了</button>
                     <button class="ghost-button" id="wordRevealButton" type="button">显示中文</button>
+                  </div>
+                  <div class="shortcut-strip" aria-label="快捷键">
+                    <span><kbd>Ctrl+;</kbd>中文</span>
+                    <span><kbd>Ctrl+.</kbd>下一个</span>
                   </div>
                 </div>
 
@@ -146,14 +159,20 @@
                 <div class="sentence-builder" id="sentenceBuilder"></div>
                 <div class="answer-reveal hidden" id="sentenceHintReveal"></div>
                 <p class="answer-feedback" id="sentenceFeedback" aria-live="polite"></p>
-                <div class="button-row centered">
+                <div class="button-row centered action-row">
                   <button class="primary-button" id="sentenceSubmitButton" type="button">提交</button>
                   <button class="secondary-button" id="sentenceHintButton" type="button">提示</button>
                   <button class="ghost-button" id="sentenceNextButton" type="button">下一个</button>
                 </div>
+                <div class="shortcut-strip" aria-label="快捷键">
+                  <span><kbd>Enter</kbd>提交</span>
+                  <span><kbd>Ctrl+;</kbd>提示</span>
+                  <span><kbd>Ctrl+.</kbd>下一个</span>
+                  <span><kbd>Space</kbd>跳词</span>
+                  <span><kbd>← →</kbd>切词</span>
+                </div>
                 <div class="trainer-footer centered">
                   <button class="danger-ghost-button" id="sentencePauseButton" type="button">暂停练习</button>
-                  <span class="keyboard-note">Enter 提交，Ctrl+; 提示/隐藏，Ctrl+. 下一个，Space 下个词，方向键切词</span>
                 </div>
               </article>
             </section>

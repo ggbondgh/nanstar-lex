@@ -40,6 +40,7 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -515,19 +516,22 @@ button {
 }
 
 .trainer-card {
-  width: min(880px, 100%);
+  width: min(760px, 100%);
   display: grid;
-  gap: 22px;
+  gap: clamp(16px, 2.2vw, 24px);
   justify-items: center;
+  align-content: center;
 }
 
 .trainer-card > * {
-  width: 100%;
+  width: min(720px, 100%);
 }
 
 .card-meta {
   justify-content: space-between;
   color: var(--muted);
+  align-items: center;
+  min-height: 42px;
 }
 
 .prompt-block {
@@ -595,6 +599,13 @@ textarea {
   border-color: var(--typing);
   box-shadow: none;
   background: transparent;
+}
+
+#wordInputMode,
+#wordReviewMode {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
 }
 
 .answer-feedback {
@@ -676,9 +687,10 @@ textarea {
   flex-wrap: wrap;
   justify-content: center;
   align-items: end;
-  gap: 18px 10px;
-  padding: 34px 18px 22px;
-  min-height: 140px;
+  gap: 14px 10px;
+  width: min(620px, 100%);
+  padding: 22px 12px 12px;
+  min-height: 116px;
 }
 
 .word-token,
@@ -701,7 +713,7 @@ textarea {
   width: var(--token-width, 8ch);
   min-width: 74px;
   max-width: 190px;
-  height: 58px;
+  height: 54px;
   border: 0;
   border-bottom: 3px solid #cfd9dd;
   padding: 8px 4px 10px;
@@ -713,6 +725,8 @@ textarea {
   font-weight: 780;
   line-height: 1;
   outline: 0;
+  overflow: hidden;
+  text-overflow: clip;
   transition:
     color 140ms ease,
     border-color 140ms ease,
@@ -773,6 +787,49 @@ textarea {
 .centered {
   justify-content: center;
   text-align: center;
+}
+
+.action-row {
+  width: min(460px, 100%);
+  justify-content: center;
+  gap: 10px;
+}
+
+.action-row button {
+  min-width: 104px;
+  min-height: 44px;
+}
+
+.shortcut-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  width: min(560px, 100%);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.shortcut-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid rgba(222, 214, 204, 0.7);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.78);
+  white-space: nowrap;
+}
+
+#wordInputMode[data-split="false"] [data-shortcut="split-only"] {
+  display: none;
+}
+
+kbd {
+  font: inherit;
+  font-weight: 800;
+  color: var(--primary);
 }
 
 .metric-list {
@@ -1070,52 +1127,196 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
+  .app-shell {
+    min-height: 100dvh;
+  }
+
   .sidebar {
-    padding: 18px 16px;
+    gap: 14px;
+    padding: 14px 12px;
   }
 
   .main {
-    padding: 14px;
+    gap: 12px;
+    padding: 12px;
   }
 
-  .topbar,
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+  }
+
+  .brand h1 {
+    font-size: 1.05rem;
+  }
+
+  .brand p {
+    font-size: 0.78rem;
+  }
+
   .section-head,
   .library-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .topbar {
+    display: none;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #practiceView > .section-head {
+    display: none;
+  }
+
   .nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .nav-item {
+    min-width: 0;
+    padding: 9px 4px;
     text-align: center;
+    font-size: 0.9rem;
   }
 
   .practice-mode-switch {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .practice-mode-card {
+    min-height: 0;
+    padding: 11px 10px;
+    text-align: center;
+    box-shadow: none;
+  }
+
+  .practice-mode-card span {
+    display: none;
+  }
+
+  .practice-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+  }
+
+  .practice-toolbar label {
+    min-width: 0;
+  }
+
+  .practice-layout {
+    gap: 12px;
   }
 
   .practice-panel {
-    min-height: 460px;
-    padding: 18px 12px;
+    min-height: min(560px, calc(100dvh - 238px));
+    padding: 16px 12px 18px;
+  }
+
+  .side-panel {
+    display: none;
+  }
+
+  .trainer-card {
+    gap: 12px;
+  }
+
+  .trainer-card > * {
+    width: min(100%, 560px);
+  }
+
+  .card-meta {
+    min-height: 34px;
+    font-size: 0.88rem;
+  }
+
+  .icon-text-button {
+    padding: 7px 10px;
+  }
+
+  .prompt-block {
+    gap: 8px;
+  }
+
+  .prompt-label {
+    font-size: 0.9rem;
   }
 
   .word-prompt,
   .sentence-prompt {
-    font-size: clamp(1.8rem, 8vw, 2.3rem);
+    font-size: clamp(2.25rem, 11vw, 3.35rem);
   }
 
   .word-builder,
   .sentence-builder {
-    padding-inline: 12px;
+    gap: 10px 8px;
+    min-height: 92px;
+    padding: 12px 2px 6px;
   }
 
   .word-token input,
   .sentence-token input {
-    min-width: 54px;
-    max-width: 108px;
+    min-width: 58px;
+    max-width: 112px;
+    height: 48px;
+    font-size: clamp(1.3rem, 7vw, 1.95rem);
+    padding-bottom: 8px;
+  }
+
+  .sentence-piece,
+  .word-token {
+    height: 56px;
+  }
+
+  .sentence-punctuation {
+    height: 48px;
+    padding-bottom: 10px;
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
+  }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .action-row button {
+    min-width: 0;
+    min-height: 46px;
+    padding: 9px 8px;
+  }
+
+  .shortcut-strip {
+    gap: 6px;
+    font-size: 0.76rem;
+  }
+
+  .shortcut-strip span {
+    padding: 4px 7px;
+  }
+
+  .trainer-footer {
+    gap: 8px;
+  }
+
+  .danger-ghost-button,
+  .text-button {
+    padding: 8px 10px;
   }
 
   .settings-form {

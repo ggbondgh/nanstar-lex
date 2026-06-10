@@ -765,6 +765,7 @@ function renderWordTrainer(item) {
 function renderWordBuilder(answer) {
   const tokens = tokenizeAnswerWords(answer);
   const useBuilder = tokens.length > 1;
+  els.wordInputMode.dataset.split = useBuilder ? "true" : "false";
   els.wordBuilder.classList.toggle("hidden", !useBuilder);
   els.wordAnswerInput.classList.toggle("hidden", useBuilder);
   els.wordBuilder.textContent = "";
@@ -782,6 +783,10 @@ function renderWordBuilder(answer) {
     const input = document.createElement("input");
     input.type = "text";
     input.autocomplete = "off";
+    input.autocapitalize = "none";
+    input.inputMode = "text";
+    input.setAttribute("data-lpignore", "true");
+    input.setAttribute("data-1p-ignore", "true");
     input.spellcheck = false;
     input.dataset.answer = token;
     input.dataset.index = String(index);
@@ -975,6 +980,10 @@ function renderSentenceBuilder(sentence) {
       const input = document.createElement("input");
       input.type = "text";
       input.autocomplete = "off";
+      input.autocapitalize = "none";
+      input.inputMode = "text";
+      input.setAttribute("data-lpignore", "true");
+      input.setAttribute("data-1p-ignore", "true");
       input.spellcheck = false;
       input.dataset.answer = part.text;
       input.dataset.index = String(wordIndex);
