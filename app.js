@@ -34,6 +34,7 @@ let sentenceHintVisible = false;
 let bulkMode = false;
 let selectedIds = new Set();
 let practiceAutoFocusBlockedUntil = 0;
+let autoSyncDeferred = false;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -251,6 +252,8 @@ function bindEvents() {
   els.syncSignInButton.addEventListener("click", signInForSync);
   els.syncSignOutButton.addEventListener("click", signOutFromSync);
   els.syncNowButton.addEventListener("click", () => syncNow({ manual: true }));
+  document.addEventListener("focusout", handleAutoSyncResumeCheck);
+  document.addEventListener("visibilitychange", handleAutoSyncVisibilityChange);
 }
 
 function loadState() {
@@ -1984,6 +1987,35 @@ function setSyncBusy(busy, label = "") {
   if (!busy) updateSyncStatus();
 }
 
+function isTextEntryElement(element) {
+  if (!element) return false;
+  if (element instanceof HTMLTextAreaElement) return !element.disabled && !element.readOnly;
+  if (element instanceof HTMLInputElement) {
+    if (element.disabled || element.readOnly) return false;
+    const blockedTypes = new Set(["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"]);
+    return !blockedTypes.has((element.type || "text").toLowerCase());
+  }
+  return Boolean(element.isContentEditable);
+}
+
+function shouldDeferAutoSync() {
+  return !document.hidden && isTextEntryElement(document.activeElement);
+}
+
+function handleAutoSyncResumeCheck() {
+  setTimeout(() => {
+    if (shouldDeferAutoSync()) return;
+    if (!autoSyncDeferred && !hasPendingSync && !lastSyncError) return;
+    autoSyncDeferred = false;
+    scheduleAutoSync(280);
+  }, 0);
+}
+
+function handleAutoSyncVisibilityChange() {
+  if (document.hidden) return;
+  handleAutoSyncResumeCheck();
+}
+
 function scheduleAutoSync(delay = 2500) {
   if (suppressAutoSync || !currentUser || !supabaseClient) return;
   clearTimeout(syncTimer);
@@ -2024,8 +2056,14 @@ async function syncNow({ manual = false } = {}) {
     return;
   }
   if (syncInProgress) return;
+  if (!manual && shouldDeferAutoSync()) {
+    autoSyncDeferred = true;
+    scheduleAutoSync(1600);
+    return;
+  }
 
   let syncNeedsFollowUp = false;
+  autoSyncDeferred = false;
   const practiceDraft = capturePracticeDraft();
   const shouldRefreshPractice = getActiveView() === "practice";
   setSyncBusy(true, "同步中");
