@@ -125,17 +125,15 @@
                 </div>
 
                 <div id="wordReviewMode" class="hidden">
-                  <div class="masked-answer" id="wordMaskedMeaning">中文已遮住</div>
-                  <div class="answer-reveal hidden" id="wordMeaningReveal"></div>
+                  <button class="meaning-reveal-card" id="wordMaskedMeaning" type="button" aria-expanded="false">轻点看释义</button>
                   <p class="answer-feedback" id="wordReviewFeedback" aria-live="polite"></p>
-                  <div class="button-row centered action-row">
-                    <button class="primary-button" id="wordRememberButton" type="button">记得</button>
-                    <button class="secondary-button" id="wordForgetButton" type="button">忘记了</button>
-                    <button class="ghost-button" id="wordRevealButton" type="button">显示中文</button>
+                  <div class="button-row centered action-row review-action-row">
+                    <button class="primary-button" id="wordReviewNextButton" type="button">下一个</button>
                   </div>
                   <div class="shortcut-strip" aria-label="快捷键">
-                    <span><kbd>Ctrl+;</kbd>中文</span>
-                    <span><kbd>Ctrl+.</kbd>下一个</span>
+                    <span><kbd>Enter</kbd>释义 / 下一个</span>
+                    <span><kbd>Ctrl+;</kbd>释义</span>
+                    <span><kbd>Ctrl+.</kbd>释义 / 下一个</span>
                   </div>
                 </div>
 

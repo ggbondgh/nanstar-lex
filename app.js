@@ -85,10 +85,7 @@ const els = {
   wordShowAnswerButton: $("#wordShowAnswerButton"),
   wordNextButton: $("#wordNextButton"),
   wordMaskedMeaning: $("#wordMaskedMeaning"),
-  wordMeaningReveal: $("#wordMeaningReveal"),
-  wordRememberButton: $("#wordRememberButton"),
-  wordForgetButton: $("#wordForgetButton"),
-  wordRevealButton: $("#wordRevealButton"),
+  wordReviewNextButton: $("#wordReviewNextButton"),
   wordPauseButton: $("#wordPauseButton"),
   wordSwitchModeButton: $("#wordSwitchModeButton"),
 
@@ -195,9 +192,8 @@ function bindEvents() {
   els.wordSubmitButton.addEventListener("click", submitWordAnswer);
   els.wordShowAnswerButton.addEventListener("click", toggleWordAnswer);
   els.wordNextButton.addEventListener("click", nextWordCard);
-  els.wordRememberButton.addEventListener("click", () => finishWordReview("correct"));
-  els.wordForgetButton.addEventListener("click", () => finishWordReview("wrong"));
-  els.wordRevealButton.addEventListener("click", toggleWordReviewAnswer);
+  els.wordMaskedMeaning.addEventListener("click", toggleWordReviewAnswer);
+  els.wordReviewNextButton.addEventListener("click", nextWordReviewCard);
   els.wordPauseButton.addEventListener("click", pauseCurrentPracticeItem);
   els.wordSwitchModeButton.addEventListener("click", switchWordTrainingMode);
   els.wordFavoriteButton.addEventListener("click", toggleCurrentFavorite);
@@ -916,9 +912,7 @@ function restorePracticeDraft(snapshot) {
       }
     } else {
       const currentItem = getCurrentPracticeItem();
-      els.wordMeaningReveal.classList.toggle("hidden", !snapshot.wordReviewAnswerVisible);
-      els.wordMaskedMeaning.textContent = snapshot.wordReviewAnswerVisible ? currentItem.chinese : "中文已遮住";
-      els.wordRevealButton.textContent = snapshot.wordReviewAnswerVisible ? "隐藏中文" : "显示中文";
+      setWordReviewAnswerVisible(snapshot.wordReviewAnswerVisible, currentItem);
     }
     setFeedback(wordTrainingMode === "input" ? els.wordFeedback : els.wordReviewFeedback, "");
     return true;
@@ -956,10 +950,7 @@ function renderWordTrainer(item) {
   els.wordAnswerReveal.textContent = `答案：${item.english}`;
   els.wordAnswerReveal.classList.add("hidden");
   els.wordShowAnswerButton.textContent = "显示答案";
-  els.wordMeaningReveal.classList.add("hidden");
-  els.wordMeaningReveal.textContent = item.chinese;
-  els.wordMaskedMeaning.textContent = "中文已遮住";
-  els.wordRevealButton.textContent = "显示中文";
+  setWordReviewAnswerVisible(false, item);
 
   const inputMode = wordTrainingMode === "input";
   els.wordInputMode.classList.toggle("hidden", !inputMode);
@@ -1181,32 +1172,30 @@ function nextWordCard() {
 function toggleWordReviewAnswer() {
   const item = getCurrentPracticeItem();
   if (!item) return;
-  wordReviewAnswerVisible = !wordReviewAnswerVisible;
-  els.wordMeaningReveal.classList.toggle("hidden", !wordReviewAnswerVisible);
-  els.wordMaskedMeaning.textContent = wordReviewAnswerVisible ? item.chinese : "中文已遮住";
-  els.wordRevealButton.textContent = wordReviewAnswerVisible ? "隐藏中文" : "显示中文";
-
-  if (wordReviewAnswerVisible) {
-    setFeedback(els.wordReviewFeedback, randomMessage("hint"), "hint");
-    recordItemResult(item, "hint");
-    saveState();
-    renderAll();
-  } else {
-    setFeedback(els.wordReviewFeedback, "");
-  }
+  setWordReviewAnswerVisible(true, item);
 }
 
-function finishWordReview(outcome) {
+function setWordReviewAnswerVisible(visible, item = getCurrentPracticeItem()) {
+  wordReviewAnswerVisible = Boolean(visible);
+  els.wordMaskedMeaning.classList.toggle("revealed", wordReviewAnswerVisible);
+  els.wordMaskedMeaning.setAttribute("aria-expanded", String(wordReviewAnswerVisible));
+  els.wordMaskedMeaning.textContent = wordReviewAnswerVisible && item ? item.chinese : "轻点看释义";
+  setFeedback(els.wordReviewFeedback, "");
+}
+
+function nextWordReviewCard() {
   const item = getCurrentPracticeItem();
   if (!item) return;
 
-  els.wordMeaningReveal.classList.remove("hidden");
-  els.wordMaskedMeaning.textContent = item.chinese;
-  recordItemResult(item, outcome);
-  setFeedback(els.wordReviewFeedback, outcome === "correct" ? randomMessage("correct") : randomMessage("wrong"), outcome === "correct" ? "success" : "error");
-  saveState();
+  if (!wordReviewAnswerVisible) {
+    setWordReviewAnswerVisible(true, item);
+    return;
+  }
+
+  wordReviewAnswerVisible = false;
+  currentWordResolved = true;
   renderAll();
-  setTimeout(() => loadPracticeCard(true), outcome === "correct" ? 720 : 980);
+  loadPracticeCard(true);
 }
 
 function switchWordTrainingMode() {
@@ -1355,13 +1344,21 @@ function focusTokenInput(input) {
 }
 
 function handleGlobalShortcuts(event) {
-  if (!event.ctrlKey || event.altKey || event.metaKey) return;
   const view = getActiveView();
   if (view !== "practice") return;
+  const type = els.practiceType.value;
+
+  if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === "Enter" && type === "word" && wordTrainingMode === "review") {
+    if (isTextEntryElement(document.activeElement)) return;
+    event.preventDefault();
+    nextWordReviewCard();
+    return;
+  }
+
+  if (!event.ctrlKey || event.altKey || event.metaKey) return;
 
   if (event.key === ";" || event.code === "Semicolon") {
     event.preventDefault();
-    const type = els.practiceType.value;
     if (type === "sentence") toggleSentenceHint();
     else if (wordTrainingMode === "input") toggleWordAnswer();
     else toggleWordReviewAnswer();
@@ -1369,8 +1366,8 @@ function handleGlobalShortcuts(event) {
 
   if (event.key === "." || event.code === "Period") {
     event.preventDefault();
-    const type = els.practiceType.value;
     if (type === "sentence") nextSentenceCard();
+    else if (wordTrainingMode === "review") nextWordReviewCard();
     else nextWordCard();
   }
 }

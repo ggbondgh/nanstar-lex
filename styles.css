@@ -636,6 +636,10 @@ textarea {
   gap: 16px;
 }
 
+#wordReviewFeedback {
+  display: none;
+}
+
 .answer-feedback {
   min-height: 38px;
   margin: 0;
@@ -697,12 +701,65 @@ textarea {
   }
 }
 
-.masked-answer,
 .answer-reveal {
   border-radius: 8px;
   padding: 14px;
   background: var(--panel-alt);
   text-align: center;
+}
+
+.meaning-reveal-card {
+  width: min(420px, 100%);
+  min-height: 64px;
+  border: 1px solid rgba(222, 214, 204, 0.75);
+  border-radius: 8px;
+  padding: 16px 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(240, 235, 227, 0.72)),
+    #fff;
+  color: #5f5968;
+  font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  font-weight: 760;
+  line-height: 1.45;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(20, 7, 31, 0.06);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.meaning-reveal-card:hover,
+.meaning-reveal-card:focus-visible {
+  border-color: rgba(124, 58, 237, 0.32);
+  color: var(--typing);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.meaning-reveal-card.revealed {
+  border-color: rgba(245, 158, 11, 0.34);
+  background:
+    linear-gradient(180deg, #fffaf0 0%, #fff5db 100%),
+    #fff;
+  color: var(--text);
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  box-shadow: 0 16px 34px rgba(245, 158, 11, 0.12);
+  animation: meaning-float 220ms ease-out;
+}
+
+@keyframes meaning-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .answer-reveal {
@@ -827,6 +884,14 @@ textarea {
   width: min(460px, 100%);
   justify-content: center;
   gap: 10px;
+}
+
+.review-action-row {
+  width: min(220px, 100%);
+}
+
+.review-action-row button {
+  width: 100%;
 }
 
 .action-row button {
@@ -1352,6 +1417,16 @@ button:disabled {
     min-width: 0;
     min-height: 46px;
     padding: 9px 8px;
+  }
+
+  .review-action-row {
+    grid-template-columns: minmax(150px, 220px);
+    justify-content: center;
+  }
+
+  .meaning-reveal-card {
+    min-height: 58px;
+    padding: 14px 18px;
   }
 
   .shortcut-strip {
