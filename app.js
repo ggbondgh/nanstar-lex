@@ -1396,14 +1396,12 @@ function handleGlobalShortcuts(event) {
     event.preventDefault();
     if (type === "sentence") toggleSentenceHint();
     else if (wordTrainingMode === "input") toggleWordAnswer();
-    else toggleWordReviewAnswer();
   }
 
   if (event.key === "." || event.code === "Period") {
     event.preventDefault();
     if (type === "sentence") nextSentenceCard();
-    else if (wordTrainingMode === "review") nextWordReviewCard();
-    else nextWordCard();
+    else if (wordTrainingMode === "input") nextWordCard();
   }
 }
 
