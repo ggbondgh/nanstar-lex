@@ -33,6 +33,7 @@ let wordReviewAnswerVisible = false;
 let sentenceHintVisible = false;
 let bulkMode = false;
 let selectedIds = new Set();
+let practiceAutoFocusBlockedUntil = 0;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -743,6 +744,139 @@ function getCurrentPracticeItem() {
   return state.items.find((item) => item.id === currentPracticeItemId) || null;
 }
 
+function canAutoFocusPractice() {
+  return getActiveView() === "practice" && Date.now() >= practiceAutoFocusBlockedUntil;
+}
+
+function getInputSelection(input) {
+  if (!(input instanceof HTMLInputElement)) return null;
+  return {
+    start: input.selectionStart ?? input.value.length,
+    end: input.selectionEnd ?? input.value.length
+  };
+}
+
+function restoreDraftFocus(input, selection) {
+  if (!(input instanceof HTMLInputElement)) return;
+  input.focus({ preventScroll: true });
+  if (!selection) return;
+
+  try {
+    const start = Math.min(selection.start, input.value.length);
+    const end = Math.min(selection.end, input.value.length);
+    input.setSelectionRange(start, end);
+  } catch {
+    // Some mobile keyboards do not allow programmatic selection changes.
+  }
+}
+
+function capturePracticeDraft() {
+  if (getActiveView() !== "practice") return null;
+  const item = getCurrentPracticeItem();
+  if (!item) return null;
+
+  const snapshot = {
+    type: els.practiceType.value,
+    itemId: item.id,
+    mode: wordTrainingMode,
+    wordAnswerVisible,
+    wordReviewAnswerVisible,
+    sentenceHintVisible,
+    currentWordResolved,
+    currentSentenceSolved
+  };
+
+  if (snapshot.type === "word") {
+    const splitInputs = wordInputs();
+    if (splitInputs.length) {
+      const activeIndex = splitInputs.findIndex((input) => input === document.activeElement);
+      snapshot.variant = "word-split";
+      snapshot.values = splitInputs.map((input) => input.value);
+      snapshot.activeIndex = activeIndex;
+      snapshot.selection = activeIndex >= 0 ? getInputSelection(splitInputs[activeIndex]) : null;
+      return snapshot;
+    }
+
+    snapshot.variant = "word-single";
+    snapshot.value = els.wordAnswerInput.value;
+    snapshot.focused = document.activeElement === els.wordAnswerInput;
+    snapshot.selection = snapshot.focused ? getInputSelection(els.wordAnswerInput) : null;
+    return snapshot;
+  }
+
+  const inputs = sentenceInputs();
+  const activeIndex = inputs.findIndex((input) => input === document.activeElement);
+  snapshot.variant = "sentence";
+  snapshot.values = inputs.map((input) => input.value);
+  snapshot.activeIndex = activeIndex;
+  snapshot.selection = activeIndex >= 0 ? getInputSelection(inputs[activeIndex]) : null;
+  return snapshot;
+}
+
+function restorePracticeDraft(snapshot) {
+  if (!snapshot || getActiveView() !== "practice") return false;
+  if (snapshot.type !== els.practiceType.value) return false;
+  const item = getCurrentPracticeItem();
+  if (!item || item.id !== snapshot.itemId) return false;
+
+  if (snapshot.type === "word" && snapshot.mode !== wordTrainingMode) return false;
+
+  if (snapshot.type === "word") {
+    currentWordResolved = Boolean(snapshot.currentWordResolved);
+    wordAnswerVisible = Boolean(snapshot.wordAnswerVisible);
+    wordReviewAnswerVisible = Boolean(snapshot.wordReviewAnswerVisible);
+
+    const splitInputs = wordInputs();
+    if (snapshot.variant === "word-split") {
+      if (!splitInputs.length || splitInputs.length !== snapshot.values.length) return false;
+      splitInputs.forEach((input, index) => {
+        input.value = snapshot.values[index] || "";
+        input.classList.toggle("has-value", input.value.trim().length > 0);
+        input.classList.remove("correct", "error");
+      });
+      if (snapshot.activeIndex >= 0) restoreDraftFocus(splitInputs[snapshot.activeIndex] || splitInputs[0], snapshot.selection);
+    } else {
+      if (splitInputs.length) return false;
+      els.wordAnswerInput.value = snapshot.value || "";
+      if (snapshot.focused) restoreDraftFocus(els.wordAnswerInput, snapshot.selection);
+    }
+
+    if (wordTrainingMode === "input") {
+      if (snapshot.wordAnswerVisible) {
+        els.wordAnswerReveal.classList.remove("hidden");
+        els.wordShowAnswerButton.textContent = "隐藏答案";
+      } else {
+        els.wordAnswerReveal.classList.add("hidden");
+        els.wordShowAnswerButton.textContent = "显示答案";
+      }
+    } else {
+      const currentItem = getCurrentPracticeItem();
+      els.wordMeaningReveal.classList.toggle("hidden", !snapshot.wordReviewAnswerVisible);
+      els.wordMaskedMeaning.textContent = snapshot.wordReviewAnswerVisible ? currentItem.chinese : "中文已遮住";
+      els.wordRevealButton.textContent = snapshot.wordReviewAnswerVisible ? "隐藏中文" : "显示中文";
+    }
+    setFeedback(wordTrainingMode === "input" ? els.wordFeedback : els.wordReviewFeedback, "");
+    return true;
+  }
+
+  currentSentenceSolved = Boolean(snapshot.currentSentenceSolved);
+  sentenceHintVisible = Boolean(snapshot.sentenceHintVisible);
+
+  const inputs = sentenceInputs();
+  if (inputs.length !== snapshot.values.length) return false;
+  inputs.forEach((input, index) => {
+    input.value = snapshot.values[index] || "";
+    input.classList.toggle("has-value", input.value.trim().length > 0);
+    input.classList.remove("correct", "error");
+  });
+  if (snapshot.activeIndex >= 0) restoreDraftFocus(inputs[snapshot.activeIndex] || inputs[0], snapshot.selection);
+
+  els.sentenceHintReveal.classList.toggle("hidden", !snapshot.sentenceHintVisible);
+  els.sentenceHintButton.textContent = snapshot.sentenceHintVisible ? "隐藏提示" : "提示";
+  setFeedback(els.sentenceFeedback, "");
+  return true;
+}
+
 function renderWordTrainer(item) {
   if (!item) return;
   currentWordResolved = false;
@@ -783,7 +917,13 @@ function renderWordBuilder(answer) {
   els.wordBuilder.textContent = "";
 
   if (!useBuilder) {
-    setTimeout(() => els.wordAnswerInput.focus(), 30);
+    if (canAutoFocusPractice()) {
+      setTimeout(() => {
+        if (canAutoFocusPractice() && !els.wordAnswerInput.classList.contains("hidden")) {
+          els.wordAnswerInput.focus();
+        }
+      }, 30);
+    }
     return;
   }
 
@@ -809,7 +949,13 @@ function renderWordBuilder(answer) {
   });
 
   const firstInput = wordInputs()[0];
-  if (firstInput) setTimeout(() => firstInput.focus(), 30);
+  if (firstInput && canAutoFocusPractice()) {
+    setTimeout(() => {
+      if (canAutoFocusPractice() && wordInputs()[0] === firstInput) {
+        firstInput.focus();
+      }
+    }, 30);
+  }
 }
 
 function tokenizeAnswerWords(answer) {
@@ -1024,7 +1170,13 @@ function renderSentenceBuilder(sentence) {
   });
 
   const firstInput = els.sentenceBuilder.querySelector("input");
-  if (firstInput) setTimeout(() => firstInput.focus(), 30);
+  if (firstInput && canAutoFocusPractice()) {
+    setTimeout(() => {
+      if (canAutoFocusPractice() && els.sentenceBuilder.contains(firstInput)) {
+        firstInput.focus();
+      }
+    }, 30);
+  }
 }
 
 function tokenizeSentence(sentence) {
@@ -1874,6 +2026,8 @@ async function syncNow({ manual = false } = {}) {
   if (syncInProgress) return;
 
   let syncNeedsFollowUp = false;
+  const practiceDraft = capturePracticeDraft();
+  const shouldRefreshPractice = getActiveView() === "practice";
   setSyncBusy(true, "同步中");
   try {
     await pullRemoteData();
@@ -1881,7 +2035,11 @@ async function syncNow({ manual = false } = {}) {
     await pushLocalData();
     saveStateLocalOnly();
     renderAll();
-    loadPracticeCard(false);
+    if (shouldRefreshPractice) {
+      practiceAutoFocusBlockedUntil = Date.now() + 160;
+      loadPracticeCard(false);
+      restorePracticeDraft(practiceDraft);
+    }
     lastSyncedAt = new Date();
     lastSyncError = "";
     hasPendingSync = syncDirtyRevision !== revisionBeforePush;
