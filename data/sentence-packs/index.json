@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-10",
+  "source": {
+    "name": "Tatoeba",
+    "url": "https://tatoeba.org/",
+    "downloadsUrl": "https://downloads.tatoeba.org/exports/",
+    "license": "CC-BY 2.0 FR",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/fr/"
+  },
+  "packs": [
+    {
+      "id": "sent-core",
+      "type": "sentence",
+      "name": "高频基础句",
+      "category": "基础表达",
+      "description": "适合每天回收的高频基础英文句，以简短句和常用结构为主。",
+      "file": "./data/sentence-packs/sent-core.json",
+      "count": 120,
+      "source": "Tatoeba",
+      "license": "CC-BY 2.0 FR"
+    },
+    {
+      "id": "sent-daily",
+      "type": "sentence",
+      "name": "日常口语句",
+      "category": "生活沟通",
+      "description": "日常对话中常用的询问、表达需求和互动句式。",
+      "file": "./data/sentence-packs/sent-daily.json",
+      "count": 100,
+      "source": "Tatoeba",
+      "license": "CC-BY 2.0 FR"
+    },
+    {
+      "id": "sent-travel",
+      "type": "sentence",
+      "name": "旅行场景句",
+      "category": "场景表达",
+      "description": "围绕交通、酒店、餐厅和出行需求的实用句。",
+      "file": "./data/sentence-packs/sent-travel.json",
+      "count": 90,
+      "source": "Tatoeba",
+      "license": "CC-BY 2.0 FR"
+    },
+    {
+      "id": "sent-work",
+      "type": "sentence",
+      "name": "工作沟通句",
+      "category": "工作表达",
+      "description": "适合工作沟通、任务讨论和办公场景的句式练习。",
+      "file": "./data/sentence-packs/sent-work.json",
+      "count": 90,
+      "source": "Tatoeba",
+      "license": "CC-BY 2.0 FR"
+    },
+    {
+      "id": "sent-writing",
+      "type": "sentence",
+      "name": "写作连接句",
+      "category": "写作句型",
+      "description": "包含原因、转折、建议、可能性等写作常用表达。",
+      "file": "./data/sentence-packs/sent-writing.json",
+      "count": 90,
+      "source": "Tatoeba",
+      "license": "CC-BY 2.0 FR"
+    }
+  ]
+}

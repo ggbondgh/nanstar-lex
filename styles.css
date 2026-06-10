@@ -1055,6 +1055,13 @@ button:disabled {
   margin: 0 0 6px;
 }
 
+.wordbook-source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  justify-content: flex-end;
+}
+
 .text-link {
   color: var(--primary);
   font-weight: 800;
@@ -1124,6 +1131,8 @@ button:disabled {
 
 .wordbook-status {
   flex: 0 0 auto;
+  align-self: flex-start;
+  width: fit-content;
   padding: 5px 9px;
   border-radius: 999px;
   background: var(--panel-alt);
@@ -1549,6 +1558,10 @@ button:disabled {
 
   .wordbook-intro {
     grid-template-columns: 1fr;
+  }
+
+  .wordbook-source-links {
+    justify-content: flex-start;
   }
 
   .wordbook-card {

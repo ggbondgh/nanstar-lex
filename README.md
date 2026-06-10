@@ -4,17 +4,28 @@
 
 当前能力包含单词/短语练习、句子练习、导入、文件夹、标签、收藏、统计和 Supabase 同步。
 
-## 内置词书
+## 内置书库
 
-内置词书位于“词书”页面，加入后会单独进入“词书库”，不会混入个人导入文件夹。当前词书由 [ECDICT](https://github.com/skywind3000/ECDICT) 的开源数据生成，遵循 MIT License。
+内置书库位于“内置书库”页面，分为单词词书和句子词书。加入后会单独进入内置库，不会混入个人导入文件夹。
+
+单词词书由 [ECDICT](https://github.com/skywind3000/ECDICT) 的开源数据生成，遵循 MIT License。
 
 已生成的词书包括中考、高考、CET-4、CET-6、考研、IELTS、TOEFL 和 GRE。词书只作为学习辅助词表，不表示官方完整题库。
 
-重新生成词书资产：
+句子词书由 [Tatoeba](https://tatoeba.org/) 英中句子对筛选生成，遵循 CC-BY 2.0 FR。当前内置高频基础句、日常口语句、旅行场景句、工作沟通句和写作连接句。每条句子保留 Tatoeba 英文句子 ID 和中文句子 ID，详见 `data/sentence-packs/NOTICE.md`。
+
+重新生成单词词书资产：
 
 ```powershell
 cd "D:\Super English"
 node tools\build-word-packs.js
+```
+
+重新生成句子词书资产：
+
+```powershell
+cd "D:\Super English"
+python tools\build-sentence-packs.py
 ```
 
 ## 本地运行

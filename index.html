@@ -259,27 +259,37 @@
         <section class="view" id="booksView" aria-labelledby="booksTitle">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Word Books</p>
-              <h2 id="booksTitle">词书</h2>
+              <p class="eyebrow">Built-in Books</p>
+              <h2 id="booksTitle">内置书库</h2>
             </div>
           </div>
 
           <section class="tool-panel wordbook-intro">
             <div>
-              <h3>内置词书库</h3>
-              <p class="panel-note">词书会单独进入“词书库”，不会混到你的个人导入文件夹里。</p>
+              <h3>单词词书 / 句子词书</h3>
+              <p class="panel-note">内置书会单独进入内置库，不会混到你的个人导入文件夹里。</p>
             </div>
-            <a class="text-link" href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noreferrer">来源：ECDICT · MIT</a>
+            <div class="wordbook-source-links">
+              <a class="text-link" href="https://github.com/skywind3000/ECDICT" target="_blank" rel="noreferrer">ECDICT · MIT</a>
+              <a class="text-link" href="https://tatoeba.org/" target="_blank" rel="noreferrer">Tatoeba · CC-BY</a>
+            </div>
           </section>
 
           <div class="wordbook-toolbar">
+            <label>
+              类型
+              <select id="bookTypeFilter">
+                <option value="word" selected>单词词书</option>
+                <option value="sentence">句子词书</option>
+              </select>
+            </label>
             <label>
               分类
               <select id="bookCategoryFilter"></select>
             </label>
             <label class="search-label">
-              搜索词书
-              <input id="bookSearch" type="search" placeholder="CET / 雅思 / GRE" />
+              搜索
+              <input id="bookSearch" type="search" placeholder="CET / 高频 / 旅行" />
             </label>
           </div>
 
@@ -300,7 +310,7 @@
               来源
               <select id="librarySource">
                 <option value="personal" selected>个人库</option>
-                <option value="books">词书库</option>
+                <option value="books">内置库</option>
                 <option value="all">全部来源</option>
               </select>
             </label>

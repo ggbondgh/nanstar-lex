@@ -2,6 +2,7 @@ const STORAGE_KEY = "super-english-state-v1";
 const SYNC_SETTINGS_KEY = "super-english-sync-settings-v1";
 const SYNC_META_KEY = "super-english-sync-meta-v1";
 const WORD_PACK_INDEX_URL = "./data/packs/index.json";
+const SENTENCE_PACK_INDEX_URL = "./data/sentence-packs/index.json";
 const BOOK_FOLDER_PREFIX = "book:";
 const WORD_PACK_INSTALL_CHUNK = 240;
 const LIBRARY_PAGE_SIZE = 200;
@@ -42,6 +43,9 @@ let autoSyncDeferred = false;
 let wordPacks = [];
 let wordPackIndex = null;
 let wordPackLoadError = "";
+let sentencePacks = [];
+let sentencePackIndex = null;
+let sentencePackLoadError = "";
 let packCache = new Map();
 let libraryRenderLimit = LIBRARY_PAGE_SIZE;
 
@@ -121,6 +125,7 @@ const els = {
   tagSuggestions: $("#tagSuggestions"),
 
   bookCategoryFilter: $("#bookCategoryFilter"),
+  bookTypeFilter: $("#bookTypeFilter"),
   bookSearch: $("#bookSearch"),
   bookCatalog: $("#bookCatalog"),
 
@@ -156,7 +161,7 @@ function init() {
   hydrateSyncForm();
   updateCredentialScope("practice");
   initializeSync();
-  loadWordPackIndex();
+  loadBuiltInPackIndexes();
   loadPracticeCard();
 
   if ("serviceWorker" in navigator) {
@@ -181,6 +186,7 @@ function bindEvents() {
     if (!button) return;
     els.practiceType.value = button.dataset.practiceTarget;
     syncPracticeModeButtons();
+    renderPracticeScopeOptions();
     currentPracticeItemId = null;
     loadPracticeCard();
     renderPracticeMetrics();
@@ -231,6 +237,10 @@ function bindEvents() {
     });
   });
 
+  els.bookTypeFilter?.addEventListener("change", () => {
+    renderBookCategoryOptions();
+    renderBookCatalog();
+  });
   els.bookCategoryFilter.addEventListener("change", renderBookCatalog);
   els.bookSearch.addEventListener("input", renderBookCatalog);
 
@@ -238,7 +248,7 @@ function bindEvents() {
     control.addEventListener("change", () => {
       selectedIds.clear();
       resetLibraryRenderLimit();
-      if (control === els.librarySource) renderFolderOptions();
+      if (control === els.librarySource || control === els.libraryType) renderFolderOptions();
       renderLibrary();
     });
   });
@@ -466,18 +476,66 @@ function getItemSource(item) {
   return isBookItem(item) ? "book" : "personal";
 }
 
+function normalizeBookPack(pack, type) {
+  return {
+    ...pack,
+    type: pack.type || type
+  };
+}
+
+function getAllBookPacks() {
+  return [
+    ...wordPacks.map((pack) => normalizeBookPack(pack, "word")),
+    ...sentencePacks.map((pack) => normalizeBookPack(pack, "sentence"))
+  ];
+}
+
+function getBookCatalogType() {
+  return els.bookTypeFilter?.value || "word";
+}
+
+function getBookPacksByType(type = getBookCatalogType()) {
+  return type === "sentence"
+    ? sentencePacks.map((pack) => normalizeBookPack(pack, "sentence"))
+    : wordPacks.map((pack) => normalizeBookPack(pack, "word"));
+}
+
+function getBookPackLoadError(type = getBookCatalogType()) {
+  return type === "sentence" ? sentencePackLoadError : wordPackLoadError;
+}
+
 function getBookPackMeta(bookId) {
-  return wordPackIndex?.packs?.find((pack) => pack.id === bookId) || null;
+  return getAllBookPacks().find((pack) => pack.id === bookId) || null;
+}
+
+function getBookPackType(bookId) {
+  const meta = getBookPackMeta(bookId);
+  if (meta?.type) return meta.type;
+  const item = state.items.find((entry) => !entry.deletedAt && getBookIdFromItem(entry) === bookId);
+  if (item?.type) return item.type;
+  return String(bookId || "").startsWith("sent-") ? "sentence" : "word";
 }
 
 function getBookPackName(bookId) {
-  return getBookPackMeta(bookId)?.name || "词书";
+  return getBookPackMeta(bookId)?.name || (getBookPackType(bookId) === "sentence" ? "句子词书" : "词书");
 }
 
-function getInstalledBookIds() {
+function getBookPackUnit(type) {
+  return type === "sentence" ? "句" : "词";
+}
+
+function getBookLibraryLabel(type) {
+  return type === "sentence" ? "句子词书库" : "词书库";
+}
+
+function getBookGroupLabel(type) {
+  return type === "sentence" ? "句子词书" : "单词词书";
+}
+
+function getInstalledBookIds({ type = "all" } = {}) {
   return Array.from(new Set(
     state.items
-      .filter((item) => !item.deletedAt)
+      .filter((item) => !item.deletedAt && (type === "all" || !type || item.type === type))
       .map((item) => getBookIdFromItem(item))
       .filter(Boolean)
   ));
@@ -487,29 +545,50 @@ function getInstalledBookItemCount(bookId) {
   return state.items.filter((item) => !item.deletedAt && getBookIdFromItem(item) === bookId).length;
 }
 
-async function loadWordPackIndex() {
+async function loadBuiltInPackIndexes() {
+  await Promise.allSettled([
+    loadPackIndex("word", WORD_PACK_INDEX_URL),
+    loadPackIndex("sentence", SENTENCE_PACK_INDEX_URL)
+  ]);
+  renderAll();
+}
+
+async function loadPackIndex(type, url) {
   try {
-    wordPackLoadError = "";
-    const response = await fetch(WORD_PACK_INDEX_URL, { cache: "no-store" });
-    if (!response.ok) throw new Error(`词书索引加载失败：${response.status}`);
-    wordPackIndex = await response.json();
-    wordPacks = Array.isArray(wordPackIndex?.packs) ? wordPackIndex.packs : [];
-    renderAll();
+    setPackLoadError(type, "");
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${getBookGroupLabel(type)}索引加载失败：${response.status}`);
+    const index = await response.json();
+    setPackIndex(type, index, Array.isArray(index?.packs) ? index.packs : []);
   } catch (error) {
     console.warn(error);
-    wordPackLoadError = error.message || "词书索引加载失败";
-    wordPackIndex = null;
-    wordPacks = [];
-    renderBookCategoryOptions();
-    renderBookCatalog();
-    renderFolderOptions();
+    setPackIndex(type, null, []);
+    setPackLoadError(type, error.message || `${getBookGroupLabel(type)}索引加载失败`);
   }
+}
+
+function setPackIndex(type, index, packs) {
+  if (type === "sentence") {
+    sentencePackIndex = index;
+    sentencePacks = packs;
+    return;
+  }
+  wordPackIndex = index;
+  wordPacks = packs;
+}
+
+function setPackLoadError(type, message) {
+  if (type === "sentence") {
+    sentencePackLoadError = message;
+    return;
+  }
+  wordPackLoadError = message;
 }
 
 function renderBookCategoryOptions() {
   if (!els.bookCategoryFilter) return;
   const previous = els.bookCategoryFilter.value || "all";
-  const categories = Array.from(new Set(wordPacks.map((pack) => pack.category).filter(Boolean)));
+  const categories = Array.from(new Set(getBookPacksByType().map((pack) => pack.category).filter(Boolean)));
   els.bookCategoryFilter.textContent = "";
   els.bookCategoryFilter.append(makeOption("all", "全部分类"));
   categories.forEach((category) => els.bookCategoryFilter.append(makeOption(category, category)));
@@ -519,7 +598,7 @@ function renderBookCategoryOptions() {
 function getFilteredBookPacks() {
   const category = els.bookCategoryFilter?.value || "all";
   const query = els.bookSearch?.value.trim().toLowerCase() || "";
-  return wordPacks.filter((pack) => {
+  return getBookPacksByType().filter((pack) => {
     if (category !== "all" && pack.category !== category) return false;
     if (!query) return true;
     const haystack = `${pack.name} ${pack.category} ${pack.description}`.toLowerCase();
@@ -531,25 +610,30 @@ function renderBookCatalog() {
   if (!els.bookCatalog) return;
   els.bookCatalog.textContent = "";
 
-  if (wordPackLoadError) {
+  const type = getBookCatalogType();
+  const groupLabel = getBookGroupLabel(type);
+  const loadError = getBookPackLoadError(type);
+  const availablePacks = getBookPacksByType(type);
+
+  if (loadError) {
     const error = document.createElement("div");
     error.className = "empty-state";
     const title = document.createElement("h3");
-    title.textContent = "词书暂时不可用";
+    title.textContent = `${groupLabel}暂时不可用`;
     const text = document.createElement("p");
-    text.textContent = wordPackLoadError;
+    text.textContent = loadError;
     error.append(title, text);
     els.bookCatalog.append(error);
     return;
   }
 
-  if (!wordPacks.length) {
+  if (!availablePacks.length) {
     const loading = document.createElement("div");
     loading.className = "empty-state";
     const title = document.createElement("h3");
-    title.textContent = "词书加载中";
+    title.textContent = `${groupLabel}加载中`;
     const text = document.createElement("p");
-    text.textContent = "正在准备内置词书目录。";
+    text.textContent = "正在准备内置目录。";
     loading.append(title, text);
     els.bookCatalog.append(loading);
     return;
@@ -560,7 +644,7 @@ function renderBookCatalog() {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     const title = document.createElement("h3");
-    title.textContent = "没有匹配词书";
+    title.textContent = `没有匹配${groupLabel}`;
     const text = document.createElement("p");
     text.textContent = "可以换个关键词，或者切回全部分类。";
     empty.append(title, text);
@@ -568,13 +652,16 @@ function renderBookCatalog() {
     return;
   }
 
-  packs.forEach((pack) => els.bookCatalog.append(createWordPackCard(pack)));
+  packs.forEach((pack) => els.bookCatalog.append(createBookPackCard(pack)));
 }
 
-function createWordPackCard(pack) {
+function createBookPackCard(pack) {
+  const type = pack.type || "word";
   const installedCount = getInstalledBookItemCount(pack.id);
   const installed = installedCount > 0;
   const favoriteCount = state.items.filter((item) => !item.deletedAt && getBookIdFromItem(item) === pack.id && item.favorite).length;
+  const unit = getBookPackUnit(type);
+  const libraryLabel = getBookLibraryLabel(type);
 
   const article = document.createElement("article");
   article.className = `wordbook-card${installed ? " installed" : ""}`;
@@ -598,15 +685,15 @@ function createWordPackCard(pack) {
   meta.className = "library-meta";
   meta.append(
     makePill(pack.category),
-    makePill(`${pack.count} 词`),
-    makePill(pack.source || "ECDICT")
+    makePill(`${pack.count} ${unit}`),
+    makePill(pack.license ? `${pack.source || "来源"} · ${pack.license}` : pack.source || "来源")
   );
   if (favoriteCount) meta.append(makeTag(`收藏 ${favoriteCount}`, "favorite"));
 
   const stats = document.createElement("small");
   stats.textContent = installed
     ? `已加入 ${installedCount} 条，可直接进入练习或列表查看。`
-    : "加入后会单独进入词书库，不会放进你的个人文件夹。";
+    : `加入后会单独进入${libraryLabel}，不会放进你的个人文件夹。`;
 
   const actions = document.createElement("div");
   actions.className = "library-actions";
@@ -614,13 +701,13 @@ function createWordPackCard(pack) {
   const installButton = document.createElement("button");
   installButton.type = "button";
   installButton.className = installed ? "secondary-button" : "primary-button";
-  installButton.textContent = installed ? "重新同步这本" : "加入词书库";
+  installButton.textContent = installed ? "重新同步这本" : `加入${libraryLabel}`;
   installButton.addEventListener("click", async () => {
     const previousLabel = installButton.textContent;
     installButton.disabled = true;
     installButton.textContent = "处理中...";
     try {
-      const result = await installWordPack(pack.id);
+      const result = await installBookPack(pack.id);
       showToast(result);
     } finally {
       installButton.textContent = previousLabel;
@@ -631,36 +718,38 @@ function createWordPackCard(pack) {
   const practiceButton = document.createElement("button");
   practiceButton.type = "button";
   practiceButton.className = "ghost-button";
-  practiceButton.textContent = "练这本";
+  practiceButton.textContent = type === "sentence" ? "练这组" : "练这本";
   practiceButton.disabled = !installed;
   practiceButton.addEventListener("click", () => activateBookPractice(pack.id));
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
   removeButton.className = "danger-ghost-button";
-  removeButton.textContent = "移出词书库";
+  removeButton.textContent = `移出${libraryLabel}`;
   removeButton.disabled = !installed;
-  removeButton.addEventListener("click", () => removeWordPack(pack.id));
+  removeButton.addEventListener("click", () => removeBookPack(pack.id));
 
   actions.append(installButton, practiceButton, removeButton);
   article.append(header, meta, stats, actions);
   return article;
 }
 
-async function ensureWordPackLoaded(bookId) {
+async function ensureBookPackLoaded(bookId) {
   if (packCache.has(bookId)) return packCache.get(bookId);
   const meta = getBookPackMeta(bookId);
-  if (!meta?.file) throw new Error("词书文件不存在");
+  if (!meta?.file) throw new Error("内置书文件不存在");
 
   const response = await fetch(meta.file, { cache: "no-store" });
-  if (!response.ok) throw new Error(`词书加载失败：${meta.name}`);
+  if (!response.ok) throw new Error(`内置书加载失败：${meta.name}`);
   const data = await response.json();
   packCache.set(bookId, data);
   return data;
 }
 
-async function installWordPack(bookId) {
-  const pack = await ensureWordPackLoaded(bookId);
+async function installBookPack(bookId) {
+  const meta = getBookPackMeta(bookId);
+  const pack = await ensureBookPackLoaded(bookId);
+  const itemType = pack.type || meta?.type || getBookPackType(bookId);
   const timestamp = nowMs();
   const existingById = new Map(state.items.map((item) => [item.id, item]));
   let added = 0;
@@ -672,7 +761,7 @@ async function installWordPack(bookId) {
       const existing = existingById.get(entry.id);
       if (existing) {
         const wasDeleted = Boolean(existing.deletedAt);
-        existing.type = "word";
+        existing.type = itemType;
         existing.english = entry.english;
         existing.chinese = entry.chinese;
         existing.folderId = getBookFolderId(bookId);
@@ -689,7 +778,7 @@ async function installWordPack(bookId) {
 
       const item = {
         id: entry.id,
-        type: "word",
+        type: itemType,
         english: entry.english,
         chinese: entry.chinese,
         folderId: getBookFolderId(bookId),
@@ -716,12 +805,14 @@ async function installWordPack(bookId) {
   return revived ? `已恢复 ${revived} 条，并新增 ${added} 条到 ${pack.name}` : `已加入 ${pack.name}，共 ${added} 条`;
 }
 
-function removeWordPack(bookId) {
+function removeBookPack(bookId) {
   const pack = getBookPackMeta(bookId);
+  const type = getBookPackType(bookId);
+  const libraryLabel = getBookLibraryLabel(type);
   const items = state.items.filter((item) => !item.deletedAt && getBookIdFromItem(item) === bookId);
   if (!items.length) return;
 
-  const ok = confirm(`移出「${pack?.name || "这本词书"}」？它会从练习和词书库中消失，但之后还能重新加入。`);
+  const ok = confirm(`移出「${pack?.name || "这本内置书"}」？它会从练习和${libraryLabel}中消失，但之后还能重新加入。`);
   if (!ok) return;
 
   const timestamp = nowMs();
@@ -734,11 +825,11 @@ function removeWordPack(bookId) {
   saveState();
   renderAll();
   loadPracticeCard(true);
-  showToast(`已移出 ${pack?.name || "词书"}`);
+  showToast(`已移出 ${pack?.name || "内置书"}`);
 }
 
 function activateBookPractice(bookId) {
-  els.practiceType.value = "word";
+  els.practiceType.value = getBookPackType(bookId);
   syncPracticeModeButtons();
   renderPracticeScopeOptions();
   els.practiceScope.value = getBookFolderId(bookId);
@@ -841,7 +932,8 @@ function setSelectOptions(select, options, allowAll) {
 function renderPracticeScopeOptions() {
   const previous = els.practiceScope.value || "personal:all";
   const folders = state.folders.filter((folder) => !folder.deletedAt);
-  const installedBookIds = getInstalledBookIds();
+  const practiceType = els.practiceType.value || "word";
+  const installedBookIds = getInstalledBookIds({ type: practiceType });
   els.practiceScope.textContent = "";
 
   const allGroup = document.createElement("optgroup");
@@ -863,8 +955,8 @@ function renderPracticeScopeOptions() {
 
   if (installedBookIds.length) {
     const bookGroup = document.createElement("optgroup");
-    bookGroup.label = "词书";
-    bookGroup.append(makeOption("books:all", "全部词书"));
+    bookGroup.label = getBookGroupLabel(practiceType);
+    bookGroup.append(makeOption("books:all", `全部${getBookGroupLabel(practiceType)}`));
     installedBookIds.forEach((bookId) => {
       bookGroup.append(makeOption(getBookFolderId(bookId), getBookPackName(bookId)));
     });
@@ -884,7 +976,8 @@ function renderLibraryScopeOptions() {
   const source = els.librarySource?.value || "personal";
   const previous = els.libraryFolder.value || "all";
   const folders = state.folders.filter((folder) => !folder.deletedAt);
-  const installedBookIds = getInstalledBookIds();
+  const libraryType = els.libraryType?.value || "all";
+  const installedBookIds = getInstalledBookIds({ type: libraryType === "all" ? "all" : libraryType });
   els.libraryFolder.textContent = "";
 
   if (source === "all") {
@@ -897,13 +990,13 @@ function renderLibraryScopeOptions() {
 
     if (installedBookIds.length) {
       const bookGroup = document.createElement("optgroup");
-      bookGroup.label = "词书";
-      bookGroup.append(makeOption("books:all", "全部词书"));
+      bookGroup.label = libraryType === "sentence" ? "句子词书" : libraryType === "word" ? "单词词书" : "内置词书";
+      bookGroup.append(makeOption("books:all", "全部内置词书"));
       installedBookIds.forEach((bookId) => bookGroup.append(makeOption(getBookFolderId(bookId), getBookPackName(bookId))));
       els.libraryFolder.append(bookGroup);
     }
   } else if (source === "books") {
-    els.libraryFolder.append(makeOption("books:all", "全部词书"));
+    els.libraryFolder.append(makeOption("books:all", "全部内置词书"));
     installedBookIds.forEach((bookId) => els.libraryFolder.append(makeOption(getBookFolderId(bookId), getBookPackName(bookId))));
   } else {
     els.libraryFolder.append(makeOption("personal:all", "个人全部"));
@@ -2147,7 +2240,7 @@ function createLibraryItem(item) {
     makePill(isBookItem(item) ? getBookPackName(getBookIdFromItem(item)) : getFolderName(item.folderId)),
     makePill(item.paused ? "已暂停" : "练习中", item.paused ? "paused" : "")
   );
-  meta.append(makePill(isBookItem(item) ? "词书库" : "个人库"));
+  meta.append(makePill(isBookItem(item) ? getBookLibraryLabel(item.type) : "个人库"));
   if (item.favorite) meta.append(makeTag("收藏", "favorite"));
   (item.tags || []).forEach((tag) => meta.append(makeTag(tag)));
 
@@ -2173,7 +2266,7 @@ function createLibraryItem(item) {
       renderAll();
       loadPracticeCard(true);
     }),
-    actionButton(isBookItem(item) ? "移出词书库" : "彻底删除", () => deleteItem(item.id), "danger-ghost-button")
+    actionButton(isBookItem(item) ? `移出${getBookLibraryLabel(item.type)}` : "彻底删除", () => deleteItem(item.id), "danger-ghost-button")
   );
 
   article.append(main, meta, stats, tagEditor, actions);
@@ -2248,7 +2341,7 @@ function deleteItem(id) {
   const item = state.items.find((entry) => entry.id === id);
   if (!item) return;
   const ok = confirm(isBookItem(item)
-    ? `移出词书条目「${item.english}」？之后可以重新加入这本词书。`
+    ? `移出${getBookLibraryLabel(item.type)}条目「${item.english}」？之后可以重新加入。`
     : `彻底删除「${item.english}」？这个操作不会进回收站。`);
   if (!ok) return;
   item.deletedAt = nowMs();
