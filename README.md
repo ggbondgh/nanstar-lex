@@ -51,6 +51,38 @@ http://你的电脑局域网IP:4175/index.html
 
 不要混用 `file:///D:/Super English/index.html` 和 HTTP 地址，因为浏览器会把它们当成不同站点，本地数据和登录状态不会互通。
 
+## Android APK 自用包
+
+项目已接入 Capacitor，Android 包名为：
+
+```text
+com.zncosmos.nanstarlex
+```
+
+自用 APK 推荐从 GitHub Actions 下载：
+
+1. 打开 GitHub 仓库的 `Actions` 页面。
+2. 选择 `Android APK` workflow。
+3. 打开最新一次成功运行。
+4. 在 `Artifacts` 下载 `nanstar-lex-debug-apk`。
+5. 解压后把 `app-debug.apk` 发到安卓手机安装。
+
+后续升级时，只要包名和签名不变，直接安装新版 APK 会覆盖旧版。仓库内保留了自用调试签名 `android/app/nanstar-debug.keystore`，GitHub Actions 会用同一签名并自动递增 `versionCode`，适合自用测试。
+
+如果要在本机打包，需要先安装 Android Studio 或至少配置 Java 21 与 Android SDK，然后运行：
+
+```powershell
+cd "D:\Super English"
+npm install
+npm run android:debug
+```
+
+生成位置：
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
 ## Supabase 同步
 
 第一次使用同步前，在 Supabase SQL Editor 中运行：

@@ -1,0 +1,12 @@
+{
+  "appId": "com.zncosmos.nanstarlex",
+  "appName": "NanStar Lex",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

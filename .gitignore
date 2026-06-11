@@ -15,6 +15,18 @@ dist/
 build/
 tools/.cache/
 
+# Android build output
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+!android/app/nanstar-debug.keystore
+
 # User-created local backups
 super-english-backup-*.json
 nanstar-lex-backup-*.json
