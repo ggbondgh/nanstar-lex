@@ -13,6 +13,10 @@ const LIBRARY_PAGE_SIZE = 200;
 const SYNC_PULL_OVERLAP_MS = 60000;
 const SYNC_PAGE_SIZE = 1000;
 const SYNC_UPSERT_CHUNK = 500;
+const ANDROID_RELEASE_BASE_URL = "https://github.com/ggbondgh/nanstar-lex/releases/latest/download";
+const ANDROID_APK_URL = `${ANDROID_RELEASE_BASE_URL}/nanstar-lex.apk`;
+const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
+const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-lex/releases/latest";
 
 const defaultState = {
   version: 1,
@@ -60,6 +64,7 @@ let storageMode = "indexedDB";
 let appDbPromise = null;
 let lastPulledAt = Number(syncMeta.lastPulledAt || 0);
 let forceFullSync = Boolean(syncMeta.forceFullSync);
+let appRuntimeInfoPromise = null;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -68,10 +73,15 @@ const els = {
   navItems: $$(".nav-item"),
   views: $$(".view"),
   todayPracticeCount: $("#todayPracticeCount"),
+  downloadAppTopButton: $("#downloadAppTopButton"),
   quickImportButton: $("#quickImportButton"),
   quickPracticeButton: $("#quickPracticeButton"),
   exportDataButton: $("#exportDataButton"),
   restoreFile: $("#restoreFile"),
+  appVersionLabel: $("#appVersionLabel"),
+  appUpdateStatus: $("#appUpdateStatus"),
+  checkAppUpdateButton: $("#checkAppUpdateButton"),
+  downloadAndroidAppButton: $("#downloadAndroidAppButton"),
   toast: $("#toast"),
   syncStatus: $("#syncStatus"),
   syncUrlInput: $("#syncUrlInput"),
@@ -175,6 +185,7 @@ async function init() {
   renderAll();
   bindEvents();
   hydrateSyncForm();
+  hydrateAppUpdatePanel();
   updateCredentialScope("practice");
   initializeSync();
   loadBuiltInPackIndexes();
@@ -196,6 +207,9 @@ function bindEvents() {
 
   els.quickImportButton.addEventListener("click", () => switchView("import"));
   els.quickPracticeButton.addEventListener("click", () => switchView("practice"));
+  els.downloadAppTopButton.addEventListener("click", () => openAndroidDownload());
+  els.downloadAndroidAppButton.addEventListener("click", () => openAndroidDownload());
+  els.checkAppUpdateButton.addEventListener("click", checkAndroidUpdate);
 
   els.practiceTypeButtons.addEventListener("click", (event) => {
     const button = event.target.closest("[data-practice-target]");
@@ -2618,6 +2632,151 @@ function restoreData(event) {
     }
   };
   reader.readAsText(file);
+}
+
+async function hydrateAppUpdatePanel() {
+  const info = await getAppRuntimeInfo();
+  if (els.appVersionLabel) {
+    els.appVersionLabel.textContent = info.native
+      ? `当前 App：${info.versionName} (${info.versionCode || "debug"})`
+      : "当前环境：网页版";
+  }
+}
+
+async function getAppRuntimeInfo() {
+  if (appRuntimeInfoPromise) return appRuntimeInfoPromise;
+
+  appRuntimeInfoPromise = (async () => {
+    const capacitor = window.Capacitor;
+    const native = Boolean(capacitor?.isNativePlatform?.());
+    const appPlugin = capacitor?.Plugins?.App;
+
+    if (native && appPlugin?.getInfo) {
+      try {
+        const info = await appPlugin.getInfo();
+        return {
+          native: true,
+          versionName: info.version || "0.1.0",
+          versionCode: Number(info.build || 0)
+        };
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+    return {
+      native,
+      versionName: native ? "未知版本" : "网页版",
+      versionCode: 0
+    };
+  })();
+
+  return appRuntimeInfoPromise;
+}
+
+async function checkAndroidUpdate() {
+  if (!els.checkAppUpdateButton) return;
+
+  els.checkAppUpdateButton.disabled = true;
+  setAppUpdateStatus("正在检查新版本...");
+
+  try {
+    const [current, latest] = await Promise.all([
+      getAppRuntimeInfo(),
+      fetchAndroidUpdateInfo()
+    ]);
+
+    const latestCode = Number(latest.versionCode || 0);
+    const currentCode = Number(current.versionCode || 0);
+    const hasUpdate = !current.native || !currentCode || latestCode > currentCode;
+
+    if (!hasUpdate) {
+      setAppUpdateStatus(`已是最新版本：${current.versionName}`);
+      showToast("当前已经是最新版本");
+      return;
+    }
+
+    setAppUpdateStatus(`发现新版 ${latest.versionName || ""}，点击确认后会打开下载。`);
+    const shouldDownload = confirm(`发现新版 ${latest.versionName || "Android App"}，现在下载更新包？`);
+    if (shouldDownload) {
+      await openExternalUrl(latest.apkUrl || ANDROID_APK_URL);
+    }
+  } catch (error) {
+    console.warn(error);
+    setAppUpdateStatus("检查失败，可以直接下载最新安装包。");
+    showToast("检查更新失败，已保留直接下载入口");
+  } finally {
+    els.checkAppUpdateButton.disabled = false;
+  }
+}
+
+async function fetchAndroidUpdateInfo() {
+  const manifestInfo = await fetchAndroidUpdateManifest();
+  if (manifestInfo) return manifestInfo;
+
+  const response = await fetch(ANDROID_RELEASE_API_URL, {
+    cache: "no-store",
+    headers: { Accept: "application/vnd.github+json" }
+  });
+  if (!response.ok) throw new Error(`GitHub Release 查询失败：${response.status}`);
+
+  const release = await response.json();
+  let info = {};
+  try {
+    info = JSON.parse(release.body || "{}");
+  } catch {
+    info = {};
+  }
+
+  const apkAsset = Array.isArray(release.assets)
+    ? release.assets.find((asset) => asset.name === "nanstar-lex.apk")
+    : null;
+
+  return normalizeAndroidUpdateInfo(info, {
+    versionName: release.name || "",
+    apkUrl: apkAsset?.browser_download_url || ANDROID_APK_URL,
+    releaseUrl: release.html_url || "https://github.com/ggbondgh/nanstar-lex/releases/latest"
+  });
+}
+
+async function fetchAndroidUpdateManifest() {
+  try {
+    const response = await fetch(ANDROID_UPDATE_URL, { cache: "no-store" });
+    if (!response.ok) return null;
+    const info = await response.json();
+    return normalizeAndroidUpdateInfo(info);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAndroidUpdateInfo(info = {}, fallback = {}) {
+  return {
+    versionCode: Number(info.versionCode || fallback.versionCode || 0),
+    versionName: info.versionName || fallback.versionName || "",
+    apkUrl: info.apkUrl || fallback.apkUrl || ANDROID_APK_URL,
+    releaseUrl: info.releaseUrl || fallback.releaseUrl || "https://github.com/ggbondgh/nanstar-lex/releases/latest"
+  };
+}
+
+function setAppUpdateStatus(message) {
+  if (els.appUpdateStatus) els.appUpdateStatus.textContent = message;
+}
+
+async function openAndroidDownload() {
+  setAppUpdateStatus("正在打开 Android 安装包下载链接...");
+  await openExternalUrl(ANDROID_APK_URL);
+}
+
+async function openExternalUrl(url) {
+  const browserPlugin = window.Capacitor?.Plugins?.Browser;
+  if (browserPlugin?.open) {
+    await browserPlugin.open({ url });
+    return;
+  }
+
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) window.location.href = url;
 }
 
 function hydrateSyncForm() {

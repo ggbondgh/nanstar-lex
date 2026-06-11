@@ -33,6 +33,7 @@
       <main class="main">
         <header class="topbar utility-topbar">
           <div class="topbar-actions">
+            <button class="ghost-button" id="downloadAppTopButton" type="button">下载 App</button>
             <button class="secondary-button" id="quickImportButton" type="button">快速导入</button>
             <button class="primary-button" id="quickPracticeButton" type="button">回到练习</button>
           </div>
@@ -449,6 +450,16 @@
                 <button class="ghost-button" id="exportDataButton" type="button">导出备份</button>
                 <label class="ghost-button file-button" for="restoreFile">导入备份</label>
                 <input id="restoreFile" type="file" accept="application/json" hidden />
+              </div>
+            </section>
+
+            <section class="tool-panel settings-panel app-update-panel">
+              <h3>Android App</h3>
+              <p class="panel-note" id="appVersionLabel">正在读取版本信息。</p>
+              <p class="panel-note" id="appUpdateStatus" aria-live="polite">可以在这里下载或检查 NanStar Lex 安卓安装包。</p>
+              <div class="settings-actions">
+                <button class="secondary-button" id="checkAppUpdateButton" type="button">检查更新</button>
+                <button class="ghost-button" id="downloadAndroidAppButton" type="button">下载 Android App</button>
               </div>
             </section>
 

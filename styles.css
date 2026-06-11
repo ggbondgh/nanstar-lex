@@ -326,6 +326,30 @@ textarea {
   gap: 10px;
 }
 
+.app-update-panel {
+  border-color: rgba(15, 118, 110, 0.22);
+  background:
+    linear-gradient(135deg, rgba(220, 247, 243, 0.72), rgba(255, 253, 248, 0.96) 48%, rgba(255, 244, 214, 0.58)),
+    var(--panel);
+}
+
+.app-update-panel h3 {
+  color: var(--primary);
+}
+
+.app-update-panel .panel-note {
+  line-height: 1.55;
+}
+
+.app-update-panel .settings-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-update-panel .settings-actions button {
+  min-width: 0;
+}
+
 .shortcut-list {
   display: grid;
   gap: 10px;
@@ -1570,6 +1594,10 @@ button:disabled {
   }
 
   .settings-form {
+    grid-template-columns: 1fr;
+  }
+
+  .app-update-panel .settings-actions {
     grid-template-columns: 1fr;
   }
 

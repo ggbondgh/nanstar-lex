@@ -59,15 +59,14 @@ http://你的电脑局域网IP:4175/index.html
 com.zncosmos.nanstarlex
 ```
 
-自用 APK 推荐从 GitHub Actions 下载：
+自用 APK 推荐从网页或 App 内下载：
 
-1. 打开 GitHub 仓库的 `Actions` 页面。
-2. 选择 `Android APK` workflow。
-3. 打开最新一次成功运行。
-4. 在 `Artifacts` 下载 `nanstar-lex-debug-apk`。
-5. 解压后把 `app-debug.apk` 发到安卓手机安装。
+1. 网页版进入 `设置 -> Android App`，点击 `下载 Android App`。
+2. 已安装的 App 进入 `设置 -> Android App`，点击 `检查更新` 或 `下载 Android App`。
+3. 固定下载地址为 `https://github.com/ggbondgh/nanstar-lex/releases/latest/download/nanstar-lex.apk`。
+4. 如果要看构建过程，可以打开 GitHub 仓库的 `Actions` 页面，选择 `Android APK` workflow。
 
-后续升级时，只要包名和签名不变，直接安装新版 APK 会覆盖旧版。仓库内保留了自用调试签名 `android/app/nanstar-debug.keystore`，GitHub Actions 会用同一签名并自动递增 `versionCode`，适合自用测试。
+后续升级时，只要包名和签名不变，直接安装新版 APK 会覆盖旧版。仓库内保留了自用调试签名 `android/app/nanstar-debug.keystore`，GitHub Actions 会用同一签名并自动递增 `versionCode`，同时发布 `update.json` 供 App 内检查更新使用，适合自用测试。
 
 如果要在本机打包，需要先安装 Android Studio 或至少配置 Java 21 与 Android SDK，然后运行：
 

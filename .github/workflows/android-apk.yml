@@ -19,6 +19,10 @@ on:
       - "sw.js"
       - "tools/build-android-debug.js"
       - "tools/build-capacitor-web.js"
+      - "tools/write-update-manifest.js"
+
+permissions:
+  contents: write
 
 jobs:
   build-debug-apk:
@@ -52,9 +56,32 @@ jobs:
           ANDROID_VERSION_NAME: 0.1.${{ github.run_number }}
         run: npm run android:debug
 
+      - name: Prepare release assets
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+          ANDROID_VERSION_NAME: 0.1.${{ github.run_number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/nanstar-lex.apk
+          node tools/write-update-manifest.js
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: nanstar-lex-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: release/nanstar-lex.apk
           if-no-files-found: error
+
+      - name: Publish latest Android release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: NanStar Lex Android 0.1.${{ github.run_number }}
+          body_path: release/update.json
+          make_latest: true
+          overwrite_files: true
+          files: |
+            release/nanstar-lex.apk
+            release/update.json
