@@ -1,10 +1,13 @@
-const CACHE_NAME = "nanstar-lex-v15";
+const CACHE_NAME = "nanstar-lex-v16";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
+  "./icons/nanstar-icon-192.png",
+  "./icons/nanstar-icon-512.png",
+  "./icons/nanstar-icon.svg",
   "./data/packs/index.json",
   "./data/sentence-packs/index.json"
 ];

@@ -43,8 +43,12 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+html {
+  height: 100%;
+}
+
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,
@@ -56,6 +60,14 @@ textarea {
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  min-width: 0;
 }
 
 .hidden {
@@ -1337,12 +1349,20 @@ button:disabled {
 
   .sidebar {
     gap: 14px;
-    padding: 14px 12px;
+    padding:
+      max(14px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      14px
+      max(12px, env(safe-area-inset-left));
   }
 
   .main {
     gap: 12px;
-    padding: 12px;
+    padding:
+      12px
+      max(12px, env(safe-area-inset-right))
+      max(18px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
   }
 
   .brand {
@@ -1415,7 +1435,7 @@ button:disabled {
 
   .practice-toolbar {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     align-items: end;
     gap: 10px;
   }
@@ -1446,7 +1466,7 @@ button:disabled {
   }
 
   .practice-panel {
-    min-height: min(560px, calc(100dvh - 238px));
+    min-height: clamp(390px, calc(100dvh - 260px), 560px);
     padding: 16px 12px 18px;
   }
 
@@ -1489,6 +1509,7 @@ button:disabled {
     gap: 10px 8px;
     min-height: 72px;
     padding: 6px 2px 4px;
+    overflow-x: clip;
   }
 
   .word-token input,
@@ -1556,6 +1577,11 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .library-toolbar label,
+  .wordbook-toolbar label {
+    min-width: 0;
+  }
+
   .wordbook-intro {
     grid-template-columns: 1fr;
   }
@@ -1576,5 +1602,12 @@ button:disabled {
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .toast {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    max-width: none;
   }
 }

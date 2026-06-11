@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NanStar Lex icon">
+  <defs>
+    <linearGradient id="space" x1="96" y1="40" x2="416" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="0.48" stop-color="#123889"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="132" y1="152" x2="378" y2="366" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3c5"/>
+      <stop offset="0.55" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#fff7d6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#space)"/>
+  <circle cx="384" cy="112" r="7" fill="#fff7d6" opacity="0.95"/>
+  <circle cx="154" cy="104" r="4" fill="#fff7d6" opacity="0.75"/>
+  <circle cx="414" cy="346" r="5" fill="#22d3c5" opacity="0.85"/>
+  <path d="M256 122c-31 40-54 81-70 124-10 26-18 57-24 93 37-9 67-22 91-40 32-24 52-57 61-98-27 10-48 22-64 37 11-39 13-78 6-116Z" fill="#fffdf8" opacity="0.94"/>
+  <path d="M252 248c-43-71-103-95-180-73 7 66 49 124 126 176 40-29 60-63 54-103Z" fill="url(#wing)" opacity="0.95" filter="url(#glow)"/>
+  <path d="M260 248c43-71 103-95 180-73-7 66-49 124-126 176-40-29-60-63-54-103Z" fill="url(#wing)" opacity="0.95" filter="url(#glow)"/>
+  <path d="M256 214c23 54 23 112 0 174-23-62-23-120 0-174Z" fill="#0b0714" opacity="0.42"/>
+  <path d="M155 405c56-24 124-24 202 0" fill="none" stroke="#fff7d6" stroke-width="16" stroke-linecap="round" opacity="0.84"/>
+</svg>

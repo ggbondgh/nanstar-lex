@@ -1,11 +1,18 @@
 const STORAGE_KEY = "super-english-state-v1";
 const SYNC_SETTINGS_KEY = "super-english-sync-settings-v1";
 const SYNC_META_KEY = "super-english-sync-meta-v1";
+const IDB_NAME = "nanstar-lex-db";
+const IDB_VERSION = 1;
+const IDB_STORE = "kv";
+const IDB_STATE_KEY = "state";
 const WORD_PACK_INDEX_URL = "./data/packs/index.json";
 const SENTENCE_PACK_INDEX_URL = "./data/sentence-packs/index.json";
 const BOOK_FOLDER_PREFIX = "book:";
 const WORD_PACK_INSTALL_CHUNK = 240;
 const LIBRARY_PAGE_SIZE = 200;
+const SYNC_PULL_OVERLAP_MS = 60000;
+const SYNC_PAGE_SIZE = 1000;
+const SYNC_UPSERT_CHUNK = 500;
 
 const defaultState = {
   version: 1,
@@ -15,7 +22,7 @@ const defaultState = {
   activityUpdatedAt: {}
 };
 
-let state = loadState();
+let state = structuredClone(defaultState);
 let syncSettings = loadSyncSettings();
 let syncMeta = loadSyncMeta();
 let supabaseClient = null;
@@ -48,6 +55,11 @@ let sentencePackIndex = null;
 let sentencePackLoadError = "";
 let packCache = new Map();
 let libraryRenderLimit = LIBRARY_PAGE_SIZE;
+let stateSavePromise = Promise.resolve();
+let storageMode = "indexedDB";
+let appDbPromise = null;
+let lastPulledAt = Number(syncMeta.lastPulledAt || 0);
+let forceFullSync = Boolean(syncMeta.forceFullSync);
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -152,9 +164,13 @@ const els = {
   weekChart: $("#weekChart")
 };
 
-init();
+init().catch((error) => {
+  console.error(error);
+  showToast("启动失败，请刷新重试");
+});
 
-function init() {
+async function init() {
+  state = await loadState();
   repairLegacyState();
   renderAll();
   bindEvents();
@@ -282,22 +298,112 @@ function bindEvents() {
   document.addEventListener("visibilitychange", handleAutoSyncVisibilityChange);
 }
 
-function loadState() {
+async function loadState() {
+  const fallback = () => normalizeStoredState(readLegacyLocalState());
+
+  try {
+    const stored = await idbGet(IDB_STATE_KEY);
+    if (stored) return normalizeStoredState(stored);
+
+    const legacy = fallback();
+    await idbSet(IDB_STATE_KEY, legacy);
+    return legacy;
+  } catch (error) {
+    console.warn("IndexedDB unavailable, falling back to localStorage.", error);
+    storageMode = "localStorage";
+    return fallback();
+  }
+}
+
+function normalizeStoredState(value) {
+  const parsed = value && typeof value === "object" ? value : {};
+  return {
+    ...structuredClone(defaultState),
+    ...parsed,
+    folders: parsed.folders?.length ? parsed.folders : structuredClone(defaultState.folders),
+    items: Array.isArray(parsed.items) ? parsed.items : [],
+    activity: parsed.activity || {},
+    activityUpdatedAt: parsed.activityUpdatedAt || {}
+  };
+}
+
+function readLegacyLocalState() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return structuredClone(defaultState);
-    const parsed = JSON.parse(stored);
-    return {
-      ...structuredClone(defaultState),
-      ...parsed,
-      folders: parsed.folders?.length ? parsed.folders : structuredClone(defaultState.folders),
-      items: Array.isArray(parsed.items) ? parsed.items : [],
-      activity: parsed.activity || {},
-      activityUpdatedAt: parsed.activityUpdatedAt || {}
-    };
+    return stored ? JSON.parse(stored) : structuredClone(defaultState);
   } catch {
     return structuredClone(defaultState);
   }
+}
+
+function openAppDb() {
+  if (!("indexedDB" in window)) {
+    return Promise.reject(new Error("IndexedDB is not available."));
+  }
+
+  if (!appDbPromise) {
+    appDbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onversionchange = () => db.close();
+        resolve(db);
+      };
+
+      request.onerror = () => reject(request.error || new Error("IndexedDB open failed."));
+      request.onblocked = () => reject(new Error("IndexedDB upgrade was blocked."));
+    }).catch((error) => {
+      appDbPromise = null;
+      throw error;
+    });
+  }
+
+  return appDbPromise;
+}
+
+async function idbGet(key) {
+  const db = await openAppDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const request = tx.objectStore(IDB_STORE).get(key);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || tx.error);
+    tx.onerror = () => reject(tx.error || request.error);
+    tx.onabort = () => reject(tx.error || request.error || new Error("IndexedDB read aborted."));
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await openAppDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const request = tx.objectStore(IDB_STORE).put(value, key);
+
+    request.onerror = () => reject(request.error || tx.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || request.error);
+    tx.onabort = () => reject(tx.error || request.error || new Error("IndexedDB write aborted."));
+  });
+}
+
+async function persistStateSnapshot() {
+  const snapshot = structuredClone(state);
+
+  if (storageMode === "localStorage") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    return;
+  }
+
+  await idbSet(IDB_STATE_KEY, snapshot);
 }
 
 function loadSyncSettings() {
@@ -392,14 +498,24 @@ function repairLegacyState() {
   if (changed) saveState();
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function saveState(options = {}) {
+  if (options.forceFullSync) forceFullSync = true;
+  saveStateLocalOnly();
   markSyncPending();
   scheduleAutoSync();
 }
 
 function saveStateLocalOnly() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  stateSavePromise = persistStateSnapshot().catch((error) => {
+    console.warn("State persistence failed.", error);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      storageMode = "localStorage";
+    } catch (fallbackError) {
+      console.error(fallbackError);
+    }
+  });
+  return stateSavePromise;
 }
 
 function markSyncPending() {
@@ -415,7 +531,9 @@ function persistSyncMeta() {
   syncMeta = {
     hasPendingSync,
     lastSyncedAt: lastSyncedAt ? lastSyncedAt.toISOString() : "",
-    lastError: lastSyncError
+    lastError: lastSyncError,
+    lastPulledAt,
+    forceFullSync
   };
   localStorage.setItem(SYNC_META_KEY, JSON.stringify(syncMeta));
 }
@@ -940,7 +1058,8 @@ function renderPracticeScopeOptions() {
   allGroup.label = "常用";
   allGroup.append(
     makeOption("personal:all", "个人全部"),
-    makeOption("favorites:all", "全部收藏")
+    makeOption("favorites:all", "全部收藏"),
+    makeOption("review:wrong", "错题回收")
   );
   els.practiceScope.append(allGroup);
 
@@ -1270,6 +1389,9 @@ function getPracticeScope() {
 }
 
 function parseContentScope(value) {
+  if (value === "review:wrong") {
+    return { source: "all", folderId: "all", bookId: "", favoritesOnly: false, reviewMode: "wrong" };
+  }
   if (value === "favorites:all" || value.startsWith("favorites:")) {
     return { source: "all", folderId: "all", bookId: "", favoritesOnly: true };
   }
@@ -1290,12 +1412,21 @@ function parseContentScope(value) {
 
 function itemMatchesScope(item, scope) {
   if (scope.favoritesOnly && !item.favorite) return false;
+  if (scope.reviewMode === "wrong" && !isWrongReviewItem(item)) return false;
   const source = getItemSource(item);
   if (scope.source === "personal" && source !== "personal") return false;
   if (scope.source === "book" && source !== "book") return false;
   if (scope.bookId && getBookIdFromItem(item) !== scope.bookId) return false;
   if (scope.folderId && scope.folderId !== "all" && source === "personal" && item.folderId !== scope.folderId) return false;
   return true;
+}
+
+function isWrongReviewItem(item) {
+  const stats = item.stats || {};
+  if (!stats.attempts) return false;
+  if (["wrong", "hint", "skip"].includes(stats.lastOutcome)) return true;
+  if ((stats.nextDue || 0) <= nowMs() && (stats.wrong || 0) > 0) return true;
+  return (stats.wrong || 0) > (stats.correct || 0);
 }
 
 function pickPracticeItem(candidates, previousId, forceNew) {
@@ -1790,6 +1921,7 @@ function renderSentenceTrainer(item) {
   els.sentenceHintReveal.textContent = item.english;
   els.sentenceHintReveal.classList.add("hidden");
   els.sentenceHintButton.textContent = "提示";
+  els.sentencePauseButton.textContent = "屏蔽这句";
   renderSentenceBuilder(item.english);
 }
 
@@ -2023,7 +2155,7 @@ function pauseCurrentPracticeItem() {
   item.paused = true;
   touchItem(item);
   saveState();
-  showToast("已暂停练习，可在列表里恢复");
+  showToast(item.type === "sentence" ? "已屏蔽这句，可在列表里恢复" : "已暂停练习，可在列表里恢复");
   currentPracticeItemId = null;
   renderAll();
   loadPracticeCard(true);
@@ -2472,7 +2604,7 @@ function restoreData(event) {
         activity: nextState.activity || {}
       };
       repairLegacyState();
-      saveState();
+      saveState({ forceFullSync: true });
       currentPracticeItemId = null;
       importPreview = [];
       selectedIds.clear();
@@ -2778,12 +2910,17 @@ async function syncNow({ manual = false } = {}) {
   autoSyncDeferred = false;
   const practiceDraft = capturePracticeDraft();
   const shouldRefreshPractice = getActiveView() === "practice";
+  const pullSince = lastPulledAt ? Math.max(0, lastPulledAt - SYNC_PULL_OVERLAP_MS) : 0;
+  const shouldPushFull = forceFullSync || !lastSyncedAt;
+  const pushSince = shouldPushFull ? 0 : Math.max(0, lastSyncedAt.getTime() - SYNC_PULL_OVERLAP_MS);
+  const syncStartedAt = nowMs();
   setSyncBusy(true, "同步中");
   try {
-    await pullRemoteData();
+    await stateSavePromise;
+    const remoteMaxUpdatedAt = await pullRemoteData({ since: pullSince });
     const revisionBeforePush = syncDirtyRevision;
-    await pushLocalData();
-    saveStateLocalOnly();
+    await pushLocalData({ since: pushSince, full: shouldPushFull });
+    await saveStateLocalOnly();
     renderAll();
     if (shouldRefreshPractice) {
       practiceAutoFocusBlockedUntil = Date.now() + 160;
@@ -2791,6 +2928,8 @@ async function syncNow({ manual = false } = {}) {
       restorePracticeDraft(practiceDraft);
     }
     lastSyncedAt = new Date();
+    lastPulledAt = Math.max(lastPulledAt || 0, remoteMaxUpdatedAt || 0, syncStartedAt);
+    forceFullSync = false;
     lastSyncError = "";
     hasPendingSync = syncDirtyRevision !== revisionBeforePush;
     syncNeedsFollowUp = hasPendingSync;
@@ -2826,39 +2965,48 @@ function formatClock(date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-async function pushLocalData() {
+async function pushLocalData({ since = 0, full = false } = {}) {
   const userId = currentUser.id;
-  const folders = state.folders.map((folder) => ({
-    user_id: userId,
-    id: folder.id,
-    name: folder.name,
-    created_at: folder.createdAt || folder.updatedAt || nowMs(),
-    updated_at: folder.updatedAt || folder.createdAt || nowMs(),
-    deleted_at: folder.deletedAt || null
-  }));
+  const shouldPushRow = (updatedAt) => full || !since || (updatedAt || 0) >= since;
+  const rowTimestamp = (entry) => entry.updatedAt || entry.createdAt || nowMs();
 
-  const items = state.items.map((item) => ({
-    user_id: userId,
-    id: item.id,
-    type: item.type,
-    english: item.english,
-    chinese: item.chinese,
-    folder_id: item.folderId || "default",
-    tags: item.tags || [],
-    favorite: Boolean(item.favorite),
-    paused: Boolean(item.paused),
-    stats: item.stats || newItemStats(),
-    created_at: item.createdAt || item.updatedAt || nowMs(),
-    updated_at: item.updatedAt || item.createdAt || nowMs(),
-    deleted_at: item.deletedAt || null
-  }));
+  const folders = state.folders
+    .filter((folder) => shouldPushRow(rowTimestamp(folder)))
+    .map((folder) => ({
+      user_id: userId,
+      id: folder.id,
+      name: folder.name,
+      created_at: folder.createdAt || folder.updatedAt || nowMs(),
+      updated_at: folder.updatedAt || folder.createdAt || nowMs(),
+      deleted_at: folder.deletedAt || null
+    }));
 
-  const activity = Object.entries(state.activity || {}).map(([day, data]) => ({
-    user_id: userId,
-    day,
-    data,
-    updated_at: state.activityUpdatedAt?.[day] || nowMs()
-  }));
+  const items = state.items
+    .filter((item) => shouldPushRow(rowTimestamp(item)))
+    .map((item) => ({
+      user_id: userId,
+      id: item.id,
+      type: item.type,
+      english: item.english,
+      chinese: item.chinese,
+      folder_id: item.folderId || "default",
+      tags: item.tags || [],
+      favorite: Boolean(item.favorite),
+      paused: Boolean(item.paused),
+      stats: item.stats || newItemStats(),
+      created_at: item.createdAt || item.updatedAt || nowMs(),
+      updated_at: item.updatedAt || item.createdAt || nowMs(),
+      deleted_at: item.deletedAt || null
+    }));
+
+  const activity = Object.entries(state.activity || {})
+    .filter(([day]) => shouldPushRow(state.activityUpdatedAt?.[day] || 0))
+    .map(([day, data]) => ({
+      user_id: userId,
+      day,
+      data,
+      updated_at: state.activityUpdatedAt?.[day] || nowMs()
+    }));
 
   await upsertRows("se_folders", folders, "user_id,id");
   await upsertRows("se_items", items, "user_id,id");
@@ -2867,20 +3015,19 @@ async function pushLocalData() {
 
 async function upsertRows(table, rows, onConflict) {
   if (!rows.length) return;
-  const { error } = await supabaseClient.from(table).upsert(rows, { onConflict });
-  if (error) throw error;
+  for (let index = 0; index < rows.length; index += SYNC_UPSERT_CHUNK) {
+    const chunk = rows.slice(index, index + SYNC_UPSERT_CHUNK);
+    const { error } = await supabaseClient.from(table).upsert(chunk, { onConflict });
+    if (error) throw error;
+  }
 }
 
-async function pullRemoteData() {
-  const [{ data: folders, error: foldersError }, { data: items, error: itemsError }, { data: activity, error: activityError }] = await Promise.all([
-    supabaseClient.from("se_folders").select("*"),
-    supabaseClient.from("se_items").select("*"),
-    supabaseClient.from("se_activity").select("*")
+async function pullRemoteData({ since = 0 } = {}) {
+  const [folders, items, activity] = await Promise.all([
+    selectChangedRows("se_folders", since),
+    selectChangedRows("se_items", since),
+    selectChangedRows("se_activity", since)
   ]);
-
-  if (foldersError) throw foldersError;
-  if (itemsError) throw itemsError;
-  if (activityError) throw activityError;
 
   suppressAutoSync = true;
   try {
@@ -2890,6 +3037,41 @@ async function pullRemoteData() {
   } finally {
     suppressAutoSync = false;
   }
+
+  return maxUpdatedAt(folders, items, activity);
+}
+
+async function selectChangedRows(table, since = 0) {
+  const rows = [];
+
+  for (let from = 0; ; from += SYNC_PAGE_SIZE) {
+    let query = supabaseClient
+      .from(table)
+      .select("*")
+      .order("updated_at", { ascending: true })
+      .order(getSyncStableOrderColumn(table), { ascending: true })
+      .range(from, from + SYNC_PAGE_SIZE - 1);
+
+    if (since > 0) query = query.gt("updated_at", since);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    rows.push(...(data || []));
+    if (!data || data.length < SYNC_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
+function getSyncStableOrderColumn(table) {
+  return table === "se_activity" ? "day" : "id";
+}
+
+function maxUpdatedAt(...groups) {
+  return groups
+    .flat()
+    .reduce((max, row) => Math.max(max, row?.updated_at || 0), 0);
 }
 
 function mergeRemoteFolders(rows) {
@@ -2947,18 +3129,17 @@ function mergeRemoteItems(rows) {
       return;
     }
 
-    const mergedTags = Array.from(new Set([...(local.tags || []), ...(incoming.tags || [])]));
-    const mergedFavorite = Boolean(local.favorite || incoming.favorite);
+    const localStats = local.stats || newItemStats();
+    const incomingStats = incoming.stats || newItemStats();
+    const incomingIsNewer = (incoming.updatedAt || 0) >= (local.updatedAt || 0);
 
-    if ((incoming.updatedAt || 0) >= (local.updatedAt || 0)) {
+    if (incomingIsNewer) {
       Object.assign(local, incoming);
     }
 
-    local.tags = mergedTags;
-    local.favorite = mergedFavorite;
-    local.stats = mergeStats(local.stats || newItemStats(), incoming.stats || newItemStats());
+    local.stats = mergeStats(localStats, incomingStats);
 
-    if (incoming.deletedAt && (!local.deletedAt || incoming.deletedAt >= local.deletedAt)) {
+    if (incomingIsNewer && incoming.deletedAt && (!local.deletedAt || incoming.deletedAt >= local.deletedAt)) {
       local.deletedAt = incoming.deletedAt;
       local.updatedAt = Math.max(local.updatedAt || 0, incoming.updatedAt || incoming.deletedAt);
     }
