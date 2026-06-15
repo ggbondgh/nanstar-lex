@@ -897,7 +897,7 @@ textarea {
 
 .word-separator {
   padding-inline: 1px;
-  color: var(--typing);
+  color: var(--text);
 }
 
 @keyframes input-shake {
