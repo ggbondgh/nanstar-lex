@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NanStar Lex favicon">
+  <defs>
+    <linearGradient id="mark" x1="86" y1="72" x2="426" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3c5"/>
+      <stop offset="0.52" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0b0714"/>
+  <rect x="64" y="64" width="384" height="384" rx="84" fill="none" stroke="url(#mark)" stroke-width="22"/>
+  <path d="M130 352V160h42l116 122V160h45v192h-40L176 229v123h-46Z" fill="#fffdf8"/>
+  <path d="M354 160h48v150h76v42H354V160Z" fill="#fffdf8"/>
+  <path d="M128 386h256" fill="none" stroke="#f59e0b" stroke-width="20" stroke-linecap="round"/>
+</svg>

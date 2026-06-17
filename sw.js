@@ -1,4 +1,4 @@
-const CACHE_NAME = "nanstar-lex-v19";
+const CACHE_NAME = "nanstar-lex-v20";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const ASSETS = [
   "./icons/nanstar-icon-192.png",
   "./icons/nanstar-icon-512.png",
   "./icons/nanstar-icon.svg",
+  "./icons/nanstar-favicon.svg",
   "./data/packs/index.json",
   "./data/sentence-packs/index.json"
 ];
