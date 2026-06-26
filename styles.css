@@ -1462,10 +1462,10 @@ button:disabled {
     padding-bottom: max(6px, env(safe-area-inset-bottom));
   }
 
-  /* --- Main: padding for bottom tab bar --- */
+  /* --- Main: padding for safe areas + bottom tab bar --- */
   .main {
-    padding: 14px max(14px, env(safe-area-inset-right)) 84px max(14px, env(safe-area-inset-left));
-    gap: 14px;
+    padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(84px, calc(env(safe-area-inset-bottom) + 60px)) max(14px, env(safe-area-inset-left));
+    gap: 10px;
   }
 
   /* --- Topbar: still hidden --- */
@@ -1482,20 +1482,30 @@ button:disabled {
   }
   .section-head h2 { font-size: 1.2rem; }
 
-  /* --- Practice mode switch: icon cards --- */
+  /* --- Practice mode switch: compact segmented control --- */
   .practice-mode-switch {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 0;
+    background: #eee;
+    border-radius: 10px;
+    padding: 3px;
   }
   .practice-mode-card {
     min-height: 0;
-    padding: 14px 10px;
+    padding: 10px 8px;
     text-align: center;
     box-shadow: none;
-    border-radius: 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+  }
+  .practice-mode-card.active {
+    background: #fff;
+    border-color: var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
   .practice-mode-card span { display: none; }
-  .practice-mode-card strong { font-size: 0.95rem; }
+  .practice-mode-card strong { font-size: 0.9rem; }
 
   /* --- Practice toolbar: full width --- */
   .practice-toolbar {
@@ -1511,84 +1521,85 @@ button:disabled {
 
   .practice-panel {
     min-height: auto;
-    padding: 18px 14px 24px;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(20, 7, 31, 0.08);
+    padding: 14px 12px 16px;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(20, 7, 31, 0.06);
   }
 
   .side-panel { display: none; }
 
   /* --- Trainer card: center, touch-friendly --- */
   .trainer-card {
-    gap: 14px;
+    gap: 10px;
   }
   .trainer-card > * {
     width: min(100%, 560px);
   }
 
-  .card-meta { min-height: 32px; font-size: 0.85rem; }
-  .icon-text-button { padding: 6px 10px; }
+  .card-meta { min-height: 28px; font-size: 0.8rem; }
+  .icon-text-button { padding: 4px 8px; }
 
-  /* Prompt: large & centered */
-  .prompt-block { gap: 6px; }
-  .prompt-label { font-size: 0.85rem; }
+  /* Prompt: centered, native-app feel */
+  .prompt-block { gap: 4px; }
+  .prompt-label { font-size: 0.8rem; }
   .word-prompt,
   .sentence-prompt {
-    font-size: clamp(2rem, 10vw, 3rem);
+    font-size: clamp(1.6rem, 8vw, 2.4rem);
+    letter-spacing: 0.02em;
   }
 
   /* Word/sentence builder: touch-friendly */
   .word-builder,
   .sentence-builder {
-    gap: 8px 6px;
-    min-height: 68px;
-    padding: 6px 2px 4px;
+    gap: 6px 5px;
+    min-height: 56px;
+    padding: 4px 2px;
     overflow-x: clip;
   }
   .word-token input,
   .sentence-token input {
-    min-width: 54px;
-    max-width: 110px;
-    height: 46px;
-    font-size: clamp(1.2rem, 6.5vw, 1.8rem);
-    padding-bottom: 6px;
+    min-width: 48px;
+    max-width: 100px;
+    height: 42px;
+    font-size: clamp(1.1rem, 6vw, 1.6rem);
+    padding-bottom: 4px;
   }
   .sentence-piece,
-  .word-piece { height: 54px; }
+  .word-piece { height: 48px; }
   .word-separator,
   .sentence-punctuation {
-    height: 46px;
-    padding-bottom: 10px;
-    font-size: clamp(1rem, 4.5vw, 1.4rem);
+    height: 42px;
+    padding-bottom: 8px;
+    font-size: clamp(1rem, 4.5vw, 1.3rem);
   }
 
   /* Answer input */
   .answer-input {
-    font-size: clamp(1.2rem, 5.5vw, 1.8rem);
-    min-height: 48px;
-    padding: 10px 14px;
+    font-size: clamp(1.1rem, 5vw, 1.6rem);
+    min-height: 44px;
+    padding: 8px 12px;
   }
 
   /* Meaning reveal card */
   .meaning-reveal-card {
-    min-height: 54px;
-    padding: 14px 16px;
-    border-radius: 12px;
+    min-height: 46px;
+    padding: 10px 14px;
+    border-radius: 10px;
   }
 
-  /* Action buttons: full-width, touch-friendly */
+  /* Action buttons: compact pill style */
   .action-row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
-    gap: 10px;
+    gap: 8px;
   }
   .action-row button {
     min-width: 0;
-    min-height: 48px;
-    padding: 10px 8px;
-    border-radius: 12px;
-    font-size: 0.95rem;
+    min-height: 42px;
+    padding: 8px 6px;
+    border-radius: 10px;
+    font-size: 0.88rem;
   }
 
   /* Hide keyboard shortcuts on mobile */
@@ -1597,13 +1608,14 @@ button:disabled {
   /* Trainer footer */
   .trainer-footer {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     justify-content: center;
   }
   .danger-ghost-button,
   .text-button {
-    padding: 8px 14px;
+    padding: 6px 12px;
     border-radius: 999px;
+    font-size: 0.85rem;
   }
 
   /* --- Empty state --- */
