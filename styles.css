@@ -1367,275 +1367,342 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
+  /* ========================================
+     APP-LIKE MOBILE LAYOUT
+     Bottom tab nav, immersive practice, native feel
+     ======================================== */
+
+  /* --- App shell: make room for bottom tab bar --- */
   .app-shell {
     min-height: 100dvh;
   }
 
+  /* --- Sidebar → fixed bottom tab bar --- */
   .sidebar {
-    gap: 14px;
-    padding:
-      max(14px, env(safe-area-inset-top))
-      max(12px, env(safe-area-inset-right))
-      14px
-      max(12px, env(safe-area-inset-left));
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    height: auto;
+    z-index: 100;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    background: linear-gradient(180deg, var(--space) 0%, var(--space-2) 62%, #062d32 100%);
+    box-shadow: 0 -4px 24px rgba(11, 7, 20, 0.25);
+    border-top: 1px solid rgba(247, 243, 234, 0.08);
   }
 
-  .main {
-    gap: 12px;
-    padding:
-      12px
-      max(12px, env(safe-area-inset-right))
-      max(18px, env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
-  }
+  /* Hide brand on mobile */
+  .brand { display: none; }
 
-  .brand {
-    gap: 10px;
-  }
-
-  .brand-mark {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    font-size: 0.9rem;
-  }
-
-  .brand h1 {
-    font-size: 1.05rem;
-  }
-
-  .brand p {
-    font-size: 0.78rem;
-  }
-
-  .section-head,
-  .library-toolbar,
-  .wordbook-toolbar,
-  .wordbook-intro {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .topbar {
-    display: none;
-  }
-
-  .topbar-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #practiceView > .section-head {
-    display: none;
-  }
-
+  /* Nav items as tab bar */
   .nav {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 6px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    gap: 0;
+    padding: 0 max(2px, env(safe-area-inset-left)) 0 max(2px, env(safe-area-inset-right));
   }
 
   .nav-item {
+    flex: 1 1 0;
     min-width: 0;
-    padding: 9px 4px;
+    min-height: 0;
+    padding: 6px 2px 0;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0;
+    border-radius: 0;
+    background: transparent;
+    color: rgba(247, 243, 234, 0.55);
+    transition: color 150ms ease;
   }
 
+  .nav-item::before {
+    display: block;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    margin-bottom: 1px;
+  }
+
+  .nav-item::after {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Icon + label mapping */
+  .nav-item[data-view="practice"]::before { content: "\1f4dd"; }
+  .nav-item[data-view="practice"]::after { content: "练习"; }
+  .nav-item[data-view="import"]::before { content: "\2795"; }
+  .nav-item[data-view="import"]::after { content: "导入"; }
+  .nav-item[data-view="books"]::before { content: "\1f4da"; }
+  .nav-item[data-view="books"]::after { content: "词书"; }
+  .nav-item[data-view="library"]::before { content: "\1f4cb"; }
+  .nav-item[data-view="library"]::after { content: "列表"; }
+  .nav-item[data-view="stats"]::before { content: "\1f4ca"; }
+  .nav-item[data-view="stats"]::after { content: "统计"; }
+  .nav-item[data-view="settings"]::before { content: "\2699\fe0f"; }
+  .nav-item[data-view="settings"]::after { content: "设置"; }
+
+  .nav-item.active,
+  .nav-item:hover {
+    background: transparent;
+    color: var(--nebula-cyan);
+  }
+
+  /* Safe area for bottom nav */
+  .nav {
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+
+  /* --- Main: padding for bottom tab bar --- */
+  .main {
+    padding: 14px max(14px, env(safe-area-inset-right)) 84px max(14px, env(safe-area-inset-left));
+    gap: 14px;
+  }
+
+  /* --- Topbar: still hidden --- */
+  .topbar { display: none; }
+
+  /* --- Hide practice section head (title already in tab) --- */
+  #practiceView > .section-head { display: none; }
+
+  /* --- Section heads: compact --- */
+  .section-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .section-head h2 { font-size: 1.2rem; }
+
+  /* --- Practice mode switch: icon cards --- */
   .practice-mode-switch {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 10px;
   }
-
   .practice-mode-card {
     min-height: 0;
-    padding: 11px 10px;
+    padding: 14px 10px;
     text-align: center;
     box-shadow: none;
+    border-radius: 12px;
   }
+  .practice-mode-card span { display: none; }
+  .practice-mode-card strong { font-size: 0.95rem; }
 
-  .practice-mode-card span {
-    display: none;
-  }
-
+  /* --- Practice toolbar: full width --- */
   .practice-toolbar {
     display: grid;
     grid-template-columns: 1fr;
     align-items: end;
     gap: 10px;
   }
+  .practice-toolbar label { min-width: 0; }
 
-  .practice-toolbar label {
-    min-width: 0;
-  }
-
-  .control-row {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .control-row label {
-    min-width: 0;
-  }
-
-  .inline-field-group {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .compact-action {
-    min-width: 70px;
-  }
-
-  .practice-layout {
-    gap: 12px;
-  }
+  /* --- Practice layout: immersive single column --- */
+  .practice-layout { gap: 0; }
 
   .practice-panel {
-    min-height: clamp(390px, calc(100dvh - 260px), 560px);
-    padding: 16px 12px 18px;
+    min-height: auto;
+    padding: 18px 14px 24px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(20, 7, 31, 0.08);
   }
 
-  .side-panel {
-    display: none;
-  }
+  .side-panel { display: none; }
 
+  /* --- Trainer card: center, touch-friendly --- */
   .trainer-card {
-    gap: 12px;
+    gap: 14px;
   }
-
   .trainer-card > * {
     width: min(100%, 560px);
   }
 
-  .card-meta {
-    min-height: 34px;
-    font-size: 0.88rem;
-  }
+  .card-meta { min-height: 32px; font-size: 0.85rem; }
+  .icon-text-button { padding: 6px 10px; }
 
-  .icon-text-button {
-    padding: 7px 10px;
-  }
-
-  .prompt-block {
-    gap: 8px;
-  }
-
-  .prompt-label {
-    font-size: 0.9rem;
-  }
-
+  /* Prompt: large & centered */
+  .prompt-block { gap: 6px; }
+  .prompt-label { font-size: 0.85rem; }
   .word-prompt,
   .sentence-prompt {
-    font-size: clamp(2.25rem, 11vw, 3.35rem);
+    font-size: clamp(2rem, 10vw, 3rem);
   }
 
+  /* Word/sentence builder: touch-friendly */
   .word-builder,
   .sentence-builder {
-    gap: 10px 8px;
-    min-height: 72px;
+    gap: 8px 6px;
+    min-height: 68px;
     padding: 6px 2px 4px;
     overflow-x: clip;
   }
-
   .word-token input,
   .sentence-token input {
-    min-width: 58px;
-    max-width: 112px;
-    height: 48px;
-    font-size: clamp(1.3rem, 7vw, 1.95rem);
-    padding-bottom: 8px;
+    min-width: 54px;
+    max-width: 110px;
+    height: 46px;
+    font-size: clamp(1.2rem, 6.5vw, 1.8rem);
+    padding-bottom: 6px;
   }
-
   .sentence-piece,
-  .word-piece {
-    height: 56px;
-  }
-
+  .word-piece { height: 54px; }
   .word-separator,
   .sentence-punctuation {
-    height: 48px;
+    height: 46px;
     padding-bottom: 10px;
-    font-size: clamp(1.1rem, 5vw, 1.5rem);
+    font-size: clamp(1rem, 4.5vw, 1.4rem);
   }
 
+  /* Answer input */
+  .answer-input {
+    font-size: clamp(1.2rem, 5.5vw, 1.8rem);
+    min-height: 48px;
+    padding: 10px 14px;
+  }
+
+  /* Meaning reveal card */
+  .meaning-reveal-card {
+    min-height: 54px;
+    padding: 14px 16px;
+    border-radius: 12px;
+  }
+
+  /* Action buttons: full-width, touch-friendly */
   .action-row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
-    gap: 8px;
+    gap: 10px;
   }
-
   .action-row button {
     min-width: 0;
-    min-height: 46px;
-    padding: 9px 8px;
+    min-height: 48px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    font-size: 0.95rem;
   }
 
-  .meaning-reveal-card {
-    min-height: 58px;
-    padding: 14px 18px;
-  }
+  /* Hide keyboard shortcuts on mobile */
+  .shortcut-strip { display: none; }
 
-  .shortcut-strip {
-    gap: 6px;
-    font-size: 0.76rem;
-  }
-
-  .shortcut-strip span {
-    padding: 4px 7px;
-  }
-
+  /* Trainer footer */
   .trainer-footer {
-    gap: 8px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
   }
-
   .danger-ghost-button,
   .text-button {
-    padding: 8px 10px;
+    padding: 8px 14px;
+    border-radius: 999px;
   }
 
-  .settings-form {
+  /* --- Empty state --- */
+  .empty-state { padding: 20px 8px; }
+
+  /* --- Import view --- */
+  .import-grid { gap: 14px; }
+  .control-row {
+    display: grid;
     grid-template-columns: 1fr;
   }
-
-  .app-update-panel .settings-actions {
-    grid-template-columns: 1fr;
+  .control-row label { min-width: 0; }
+  .inline-field-group {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
+  .compact-action { min-width: 68px; }
+  .stacked-label textarea { min-height: 120px; }
 
+  /* --- Books view --- */
+  .wordbook-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .wordbook-toolbar label { min-width: 0; }
   .wordbook-catalog {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
-
-  .library-toolbar label,
-  .wordbook-toolbar label {
-    min-width: 0;
-  }
-
-  .wordbook-intro {
-    grid-template-columns: 1fr;
-  }
-
-  .wordbook-source-links {
-    justify-content: flex-start;
-  }
-
   .wordbook-card {
-    padding: 15px;
+    padding: 14px;
     box-shadow: none;
+    border-radius: 12px;
   }
-
   .wordbook-card-head {
     align-items: stretch;
     flex-direction: column;
   }
+  .wordbook-intro {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .wordbook-source-links {
+    justify-content: flex-start;
+  }
 
+  /* --- Library view --- */
+  .library-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .library-toolbar label { min-width: 0; }
+  .library-item {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .bulk-toolbar {
+    border-radius: 12px;
+  }
+
+  /* --- Stats view --- */
   .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .stat-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  .stat-card strong { font-size: 1.6rem; }
+  .bar-chart { min-height: 160px; }
+
+  /* --- Settings view --- */
+  .settings-grid { gap: 14px; }
+  .settings-form { grid-template-columns: 1fr; }
+  .settings-panel { gap: 12px; }
+  .sync-panel { border-radius: 12px; }
+  .app-update-panel .settings-actions {
     grid-template-columns: 1fr;
   }
+  .shortcut-list { display: none; }
 
+  /* --- Toast: center bottom --- */
   .toast {
-    right: max(12px, env(safe-area-inset-right));
-    bottom: max(14px, env(safe-area-inset-bottom));
-    left: max(12px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(76px, calc(env(safe-area-inset-bottom) + 66px));
+    left: max(14px, env(safe-area-inset-left));
     max-width: none;
+    border-radius: 12px;
+  }
+
+  /* --- Global: all buttons touch-friendly --- */
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .file-button {
+    min-height: 44px;
+    border-radius: 10px;
   }
 }
+
