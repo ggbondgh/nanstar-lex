@@ -1471,31 +1471,71 @@ button:disabled {
   /* --- Topbar: still hidden --- */
   .topbar { display: none; }
 
-  /* --- Hide practice section head (title already in tab) --- */
+  /* ========================================
+     Practice View: card-first mobile layout
+     Practice card takes center stage;
+     settings/mode collapse below.
+     ======================================== */
+
+  /* Make practiceView a flex column, reorder children */
+  #practiceView {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Practice card goes FIRST and fills all space */
+  #practiceView > .practice-layout {
+    order: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* Mode switch: tiny inline toggle, below card */
+  #practiceView > .practice-mode-switch {
+    order: 2;
+  }
+
+  /* Toolbar: collapsed to bottom */
+  #practiceView > .practice-toolbar {
+    order: 3;
+  }
+
+  /* Section head: hidden (title in tab bar) */
   #practiceView > .section-head { display: none; }
 
-  /* --- Section heads: compact --- */
-  .section-head {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .section-head h2 { font-size: 1.2rem; }
+  /* --- Practice layout: fills viewport --- */
+  .practice-layout { gap: 0; }
 
-  /* --- Practice mode switch: compact segmented control --- */
+  .practice-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    padding: 16px 14px 14px;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px rgba(20, 7, 31, 0.06);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .side-panel { display: none; }
+
+  /* --- Mode switch: minimal inline toggle --- */
   .practice-mode-switch {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: inline-flex;
     gap: 0;
     background: #eee;
-    border-radius: 10px;
-    padding: 3px;
+    border-radius: 8px;
+    padding: 2px;
+    align-self: flex-start;
+    order: 2;
   }
   .practice-mode-card {
     min-height: 0;
-    padding: 10px 8px;
+    padding: 6px 14px;
     text-align: center;
     box-shadow: none;
-    border-radius: 8px;
+    border-radius: 7px;
     border: 1px solid transparent;
     background: transparent;
   }
@@ -1505,86 +1545,87 @@ button:disabled {
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
   .practice-mode-card span { display: none; }
-  .practice-mode-card strong { font-size: 0.9rem; }
+  .practice-mode-card strong { font-size: 0.82rem; }
 
-  /* --- Practice toolbar: full width --- */
+  /* --- Toolbar: collapsed, subtle --- */
   .practice-toolbar {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: end;
-    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0;
+    order: 3;
   }
-  .practice-toolbar label { min-width: 0; }
-
-  /* --- Practice layout: immersive single column --- */
-  .practice-layout { gap: 0; }
-
-  .practice-panel {
-    min-height: auto;
-    padding: 14px 12px 16px;
-    border-radius: 14px;
-    box-shadow: 0 4px 20px rgba(20, 7, 31, 0.06);
+  .practice-toolbar label {
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 0.78rem;
+    gap: 4px;
+  }
+  .practice-toolbar select {
+    font-size: 0.82rem;
+    padding: 6px 8px;
+    border-radius: 8px;
   }
 
-  .side-panel { display: none; }
-
-  /* --- Trainer card: center, touch-friendly --- */
+  /* --- Trainer card: centered in panel --- */
   .trainer-card {
-    gap: 10px;
+    gap: 8px;
   }
   .trainer-card > * {
     width: min(100%, 560px);
   }
 
-  .card-meta { min-height: 28px; font-size: 0.8rem; }
-  .icon-text-button { padding: 4px 8px; }
+  .card-meta { min-height: 24px; font-size: 0.78rem; }
+  .icon-text-button { padding: 3px 8px; font-size: 0.78rem; }
 
   /* Prompt: centered, native-app feel */
-  .prompt-block { gap: 4px; }
-  .prompt-label { font-size: 0.8rem; }
+  .prompt-block { gap: 2px; }
+  .prompt-label { font-size: 0.78rem; opacity: 0.7; }
   .word-prompt,
   .sentence-prompt {
-    font-size: clamp(1.6rem, 8vw, 2.4rem);
+    font-size: clamp(1.8rem, 9vw, 2.6rem);
     letter-spacing: 0.02em;
+    line-height: 1.3;
   }
 
   /* Word/sentence builder: touch-friendly */
   .word-builder,
   .sentence-builder {
     gap: 6px 5px;
-    min-height: 56px;
+    min-height: 52px;
     padding: 4px 2px;
     overflow-x: clip;
   }
   .word-token input,
   .sentence-token input {
-    min-width: 48px;
-    max-width: 100px;
-    height: 42px;
-    font-size: clamp(1.1rem, 6vw, 1.6rem);
+    min-width: 46px;
+    max-width: 96px;
+    height: 40px;
+    font-size: clamp(1.1rem, 6vw, 1.5rem);
     padding-bottom: 4px;
   }
   .sentence-piece,
-  .word-piece { height: 48px; }
+  .word-piece { height: 46px; }
   .word-separator,
   .sentence-punctuation {
-    height: 42px;
+    height: 40px;
     padding-bottom: 8px;
     font-size: clamp(1rem, 4.5vw, 1.3rem);
   }
 
   /* Answer input */
   .answer-input {
-    font-size: clamp(1.1rem, 5vw, 1.6rem);
-    min-height: 44px;
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
+    min-height: 42px;
     padding: 8px 12px;
   }
 
   /* Meaning reveal card */
   .meaning-reveal-card {
-    min-height: 46px;
+    min-height: 42px;
     padding: 10px 14px;
     border-radius: 10px;
+    font-size: 0.9rem;
   }
 
   /* Action buttons: compact pill style */
@@ -1613,9 +1654,9 @@ button:disabled {
   }
   .danger-ghost-button,
   .text-button {
-    padding: 6px 12px;
+    padding: 5px 12px;
     border-radius: 999px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   /* --- Empty state --- */
