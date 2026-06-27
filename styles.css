@@ -1484,6 +1484,11 @@ button:disabled {
     gap: 8px;
   }
 
+  /* CRITICAL: hide practiceView when not active (overrides display: flex above) */
+  #practiceView:not(.active) {
+    display: none;
+  }
+
   /* Practice card goes FIRST and fills all space */
   #practiceView > .practice-layout {
     order: 1;
